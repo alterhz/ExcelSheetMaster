@@ -186,18 +186,19 @@ def get_all_sheet_names():
     with ExcelSheetHandler(CACHE_EXCEL_NAME, sheet_name) as handlerRead:
         data = handlerRead.get_all_data()
         # 遍历 data 转为字典，key 为文件名，value 为行数据
-        sheet_names = {}
+        sheet_names = []
         for row in data:
             sheets = row["sheets"]
             if sheets:
                 for sheet_name in sheets.split('\n'):
-                    sheet_names[sheet_name.strip()] = row
+                    sheet_names.append({"name": row["name"], "sheet_name": sheet_name})
         return sheet_names
 
 
 # 过滤不包含|的页签名，并转为\n分隔的字符串
 def filter_sheet_names(sheet_names):
-    return "\n".join([sheet_name for sheet_name in sheet_names if "|" in sheet_name])
+    # return "\n".join([sheet_name for sheet_name in sheet_names if "|" in sheet_name])
+    return "\n".join([sheet_name for sheet_name in sheet_names])
 
 
 

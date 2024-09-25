@@ -28,6 +28,7 @@ setting_menu = tk.Menu(menu_bar, tearoff=0)
 FONT_12 = ("微软雅黑", 12)
 FONT_14 = ("微软雅黑", 14)
 
+
 def open_path_window():
     path_window = tk.Toplevel(root)
     path_window.grab_set()
@@ -148,16 +149,17 @@ def search():
     sheet_names = get_all_sheet_names()
     search_type_index = combo_box.current()
     print(f"搜索类型：{search_type_index}，搜索内容：{search_text}")
-    for sheet_name in sheet_names:
+    for item in sheet_names:
+        excel_name = item["name"]
+        sheet_name = item["sheet_name"]
         if search_type_index == 0:
             # 页签搜索
             if search_text in sheet_name.lower():
-                tree.insert('', tk.END, values=(sheet_name, sheet_names[sheet_name]["name"]))
+                tree.insert('', tk.END, values=(sheet_name, excel_name))
         else:
             # 工作簿搜索
-            if search_text in sheet_names[sheet_name]["name"].lower():
-                tree.insert('', tk.END, values=(sheet_name, sheet_names[sheet_name]["name"]))
-
+            if search_text in excel_name.lower():
+                tree.insert('', tk.END, values=(sheet_name, excel_name))
 
 
 button = tk.Button(button_frame, text="模糊搜索", command=search, font=FONT_14, padx=15, pady=5)
@@ -171,7 +173,6 @@ style = ttk.Style()
 # 修改 Treeview 的字体大小
 style.configure("Treeview", font=FONT_12)
 style.configure("Treeview.Heading", font=("微软雅黑", 12, "bold"))
-
 
 # 创建 Treeview
 tree = ttk.Treeview(tree_frame, columns=('Sheet Name', 'Excel Name'), show='headings')
