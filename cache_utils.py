@@ -103,6 +103,12 @@ def get_path_data(path):
                 return row
     return None
 
+
+def get_all_path_data():
+    with ExcelSheetHandler(CACHE_EXCEL_NAME, ALL_PATH_SHEET_NAME) as handler_all_path:
+        return handler_all_path.get_all_data()
+
+
 def get_path_sheet_name(path):
     with ExcelSheetHandler(CACHE_EXCEL_NAME, ALL_PATH_SHEET_NAME) as handler_all_path:
         data = handler_all_path.get_all_data()
@@ -110,7 +116,6 @@ def get_path_sheet_name(path):
             if row["path"] == path:
                 return row["sheet_name"]
     return None
-
 
 
 def create_sheet_header(excel_name, sheet_name):
@@ -129,7 +134,6 @@ def compute_cache_data():
     create_all_path_sheet_header()
 
     sheet_name = get_path_sheet_name(use_path)
-
 
     # 创建缓存文件
     create_sheet_header(CACHE_EXCEL_NAME, sheet_name)
@@ -199,7 +203,6 @@ def get_all_sheet_names():
 def filter_sheet_names(sheet_names):
     # return "\n".join([sheet_name for sheet_name in sheet_names if "|" in sheet_name])
     return "\n".join([sheet_name for sheet_name in sheet_names])
-
 
 
 # 判断当前缓存是否存在页签

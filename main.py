@@ -89,6 +89,8 @@ def open_path_window():
         cache_utils.set_config_value("usePath", new_path)
         cache_utils.set_path_data(new_path, sheet_name, include_subdirs, description)
         compute_cache_data()
+        # 修改窗口标题
+        root.title(f"Excel 页签搜索工具 - 设置路径：{new_path}")
         logging.info(f"更改路径为：{new_path}，名称：{sheet_name}，描述：{description}，是否包含子目录：{include_subdirs}")
         path_window.destroy()
 
@@ -96,12 +98,75 @@ def open_path_window():
     save_button.grid(row=4, column=0, columnspan=2)
 
 
-def change_path():
-    open_path_window()
+def change_path_window():
+    new_window = tk.Toplevel(root)
+    new_window.grab_set()
+    new_window.title("新窗口设置")
+
+    # 创建下拉选择列表及标签
+    options_label = tk.Label(new_window, text="名称：", font=FONT_12)
+    options_label.grid(row=0, column=0)
+    all_path_data = cache_utils.get_all_path_data()
+    options = [row["path"] for row in all_path_data]
+    cb_path = ttk.Combobox(new_window, values=options, state='readonly', font=FONT_12, width=50)
+    cb_path.grid(row=0, column=1)
+
+    # 为 Combobox 添加选择事件
+    def on_combobox_select(event):
+        selected_option = cb_path.get()
+        logging.info(f"选择了：{selected_option}")
+        path_data = cache_utils.get_path_data(selected_option)
+        entry_sheet_name.delete(0, tk.END)
+        entry_sheet_name.insert(0, path_data["sheet_name"])
+        # 设置是否包含子目录的复选框
+        var_ckb_include_sub_dirs.set(path_data["includeSubDir"])
+        # 设置描述文本框
+        txt_desc.delete("1.0", tk.END)
+        txt_desc.insert("1.0", path_data["desc"])
+
+    cb_path.bind("<<ComboboxSelected>>", on_combobox_select)
+
+    # 创建第一个文本框及标签
+    text1_label = tk.Label(new_window, text="页签名称：", font=FONT_12)
+    text1_label.grid(row=1, column=0)
+    entry_sheet_name = tk.Entry(new_window, width=50, font=FONT_12)
+    entry_sheet_name.grid(row=1, column=1)
+
+    # 创建第二个勾选框及标签
+    text2_label = tk.Label(new_window, text="是否包含子目录：", font=FONT_12)
+    text2_label.grid(row=2, column=0)
+    var_ckb_include_sub_dirs = tk.BooleanVar()
+    text2_checkbox = tk.Checkbutton(new_window, variable=var_ckb_include_sub_dirs, font=FONT_12)
+    # text2_checkbox禁用编辑
+    text2_checkbox["state"] = "disabled"
+    text2_checkbox.grid(row=2, column=1)
+
+    # 创建第三个文本框及标签
+    text3_label = tk.Label(new_window, text="描述：", font=FONT_12)
+    text3_label.grid(row=3, column=0)
+    txt_desc = tk.Text(new_window, height=5, width=50, font=FONT_12)
+    txt_desc.grid(row=3, column=1)
+
+    # 获取当前路径
+    use_path = cache_utils.get_config_value("usePath")
+    cb_path.set(use_path)
+    on_combobox_select(None)
+
+    def confirm_selection():
+        selected_path = cb_path.get()
+        cache_utils.set_config_value("usePath", selected_path)
+        # 加载
+        compute_cache_data()
+        root.title(f"Excel 页签搜索工具 - 设置路径：{selected_path}")
+        new_window.destroy()
+
+    confirm_button = tk.Button(new_window, text="确认选择", command=confirm_selection, font=FONT_12)
+    confirm_button.grid(row=4, column=0, columnspan=2)
 
 
 # 添加更改路径选项
-setting_menu.add_command(label="添加目录", command=change_path, font=FONT_12)
+setting_menu.add_command(label="添加目录", command=open_path_window)
+setting_menu.add_command(label="选择目录", command=change_path_window)
 
 # 将设置菜单添加到菜单栏
 menu_bar.add_cascade(label="设置", menu=setting_menu)
@@ -123,6 +188,7 @@ def select_path():
 use_path = cache_utils.get_config_value("usePath")
 if cache_utils.get_path_data(use_path):
     compute_cache_data()
+    root.title(f"Excel 页签搜索工具 - 设置路径：{use_path}")
 else:
     open_path_window()
 
