@@ -13,6 +13,11 @@ from logger_utils import init_logging_basic_config
 
 init_logging_basic_config()
 
+# 配置
+cache_utils.create_config_sheet_header()
+# 所有路径
+cache_utils.create_all_path_sheet_header()
+
 root = tk.Tk()
 root.title("Excel 页签搜索工具")
 
@@ -174,9 +179,6 @@ menu_bar.add_cascade(label="设置", menu=setting_menu)
 # 将菜单栏添加到窗口
 root.config(menu=menu_bar)
 
-# 配置
-cache_utils.create_config_sheet_header()
-
 
 def select_path():
     root = tk.Tk()
@@ -261,6 +263,7 @@ def on_double_click(event):
     if item:
         values = tree.item(item, "values")
         sheet_name = values[0]
+        use_path = cache_utils.get_config_value("usePath")
         excel_name = use_path + "/" + values[1]
         open_excel_sheet(excel_name, sheet_name)
         print(f"打开页签 {sheet_name}，工作簿 {excel_name}。")

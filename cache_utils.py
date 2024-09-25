@@ -130,9 +130,6 @@ def create_sheet_header(excel_name, sheet_name):
 def compute_cache_data():
     use_path = get_config_value("usePath")
 
-    # 所有路径
-    create_all_path_sheet_header()
-
     sheet_name = get_path_sheet_name(use_path)
 
     # 创建缓存文件

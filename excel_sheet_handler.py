@@ -36,7 +36,7 @@ class ExcelSheetHandler:
         try:
             if self.sheet_name not in self.workbook.sheetnames:
                 new_sheet = self.workbook.create_sheet(title=self.sheet_name)
-                print("页签不存在，创建")
+                print(f"页签不存在，{self.file_name}创建{self.sheet_name}")
             return self.workbook[self.sheet_name]
         except FileNotFoundError:
             print(f"无法找到指定的工作簿：{self.file_name}")
