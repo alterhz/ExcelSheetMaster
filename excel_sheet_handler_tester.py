@@ -2,7 +2,7 @@ import unittest
 
 import openpyxl
 
-from ExcelSheetHandler import ExcelSheetHandler
+from excel_sheet_handler import ExcelSheetHandler
 
 
 class TestExcelSheetHandler(unittest.TestCase):
@@ -29,7 +29,6 @@ class TestExcelSheetHandler(unittest.TestCase):
         self.assertEqual(sheet.cell(row=2, column=6).value, "type_write")
         self.assertEqual(sheet.cell(row=3, column=6).value, "name_write")
         self.assertEqual(sheet.cell(row=4, column=6).value, "note_write")
-
 
     def test_delete_column(self):
         self.handler.insert_column_header(7, "to_delete", "type", "name", "note")
@@ -77,8 +76,6 @@ class TestExcelSheetHandler(unittest.TestCase):
         self.assertIsNotNone(data)
         self.assertEqual(len(data), 5)
 
-
-
     def test_get_column_values_by_column_names(self):
         sheet = self.test_create_sheet()
         sheet.cell(row=1, column=1).value = "col1"
@@ -114,7 +111,6 @@ class TestExcelSheetHandler(unittest.TestCase):
         self.assertIsNotNone(unique_values)
         self.assertEqual(unique_values, {1, 2, 3, 4, 5})
 
-
     def test_get_max_value_from_column(self):
         sheet = self.test_create_sheet()
         sheet.cell(row=1, column=1).value = "col1"
@@ -148,9 +144,7 @@ class TestExcelSheetHandler(unittest.TestCase):
         max_sn = self.handler.get_max_sn()
         self.assertEqual(max_sn, 10)
 
-
     def test_get_column_index_by_name(self):
         self.handler.insert_column_header(12, "test_col", "type", "name", "note")
         index = self.handler.get_column_index_by_name("name")
         self.assertEqual(index, 12)
-

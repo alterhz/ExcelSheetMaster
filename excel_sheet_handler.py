@@ -11,6 +11,17 @@ class ExcelSheetHandler:
         else:
             self.workbook = openpyxl.load_workbook(self.file_name)
 
+    def __enter__(self):
+        if not self.check_workbook_exists():
+            print(f"无法找到指定的工作簿：{self.file_name}")
+            return None
+        self.workbook = openpyxl.load_workbook(self.file_name)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.workbook is not None:
+            self.workbook.close()
+
     def check_workbook_exists(self):
         try:
             with open(self.file_name, 'rb') as f:
@@ -38,6 +49,8 @@ class ExcelSheetHandler:
             sheet.cell(row=2, column=index).value = type_name
             sheet.cell(row=3, column=index).value = name
             sheet.cell(row=4, column=index).value = note
+            # 自动换行
+            sheet.cell(row=4, column=index).alignment = openpyxl.styles.Alignment(wrap_text=True)
             if column_width >= 0:
                 sheet.column_dimensions[openpyxl.utils.get_column_letter(index)].width = column_width
             print(f"插入列。index:{index}, name:{name}")
@@ -112,9 +125,9 @@ class ExcelSheetHandler:
         if sheet:
             last_row = sheet.max_row
             if last_row >= 5:
-                for row in range(5, last_row + 1):
-                    for col in range(1, sheet.max_column + 1):
-                        sheet.cell(row=row, column=col).value = None
+                for row in range(last_row, 4, -1):
+                    sheet.delete_rows(row)
+        return None
 
     def get_first_row_data_by_column_values(self, *find_values):
         sheet = self.create_sheet()
@@ -132,7 +145,7 @@ class ExcelSheetHandler:
                         print(f"找不到指定的列名：{column_name}")
                         return {}
                     cell_value = sheet.cell(row=i, column=column_index).value
-                    if cell_value!= value_to_find:
+                    if cell_value != value_to_find:
                         all_columns_match = False
                         break
                     j += 2
@@ -169,7 +182,7 @@ class ExcelSheetHandler:
                             print(f"找不到指定的列名：{column_name}")
                             return {}
                         cell_value = sheet.cell(row=i, column=column_index).value
-                        if cell_value!= value_to_find:
+                        if cell_value != value_to_find:
                             all_columns_match = False
                             break
                         j += 2
@@ -227,7 +240,7 @@ class ExcelSheetHandler:
                             print(f"找不到指定的列名：{column_name}")
                             return []
                         cell_value = sheet.cell(row=i, column=column_index).value
-                        if str(cell_value)!= str(value_to_find):
+                        if str(cell_value) != str(value_to_find):
                             all_columns_match = False
                             break
                         j += 2
@@ -324,7 +337,7 @@ class ExcelSheetHandler:
         max_sn = self.get_max_value_from_column("sn")
         return max_sn
 
-    def insert_row_and_write_dict_data(self, row_number, dict_data, insert=True):
+    def write_row_data(self, row_number, dict_data, insert=False):
         sheet = self.create_sheet()
         if sheet:
             if row_number == -1:
@@ -337,10 +350,14 @@ class ExcelSheetHandler:
             for key, value in dict_data.items():
                 column_name = key
                 column_index = self.get_column_index_by_name(column_name)
-                if column_index!= 0:
+                if column_index != 0:
+                    data_type_name = self.get_data_type_name(column_name)
                     target_cell = sheet.cell(row=row_number, column=column_index)
-                    target_cell.number_format = "@"
+                    if "string" in data_type_name.lower() or "[]" in data_type_name:
+                        target_cell.number_format = "@"
                     target_cell.value = value
+                    # 设置自动换行
+                    target_cell.alignment = openpyxl.styles.Alignment(wrap_text=True)
             return row_number
         else:
             return -1
@@ -356,7 +373,7 @@ class ExcelSheetHandler:
                 column_name = column_value_pairs[i]
                 value = column_value_pairs[i + 1]
                 column_index = self.get_column_index_by_name(column_name)
-                if column_index!= 0:
+                if column_index != 0:
                     sheet.cell(row=row_number, column=column_index).value = value
                 i += 2
 
@@ -370,6 +387,17 @@ class ExcelSheetHandler:
             return 0
         else:
             return 0
+
+    def get_data_type_name(self, column_name):
+        sheet = self.create_sheet()
+        if sheet:
+            last_column = sheet.max_column
+            for i in range(1, last_column + 1):
+                if sheet.cell(row=3, column=i).value == column_name:
+                    return sheet.cell(row=2, column=i).value
+            return None
+        else:
+            return None
 
     def move_to_row(self, row_number):
         sheet = self.create_sheet()
@@ -399,6 +427,12 @@ class ExcelSheetHandler:
             return sheet.max_row
         else:
             return None
+
+    def save_workbook(self):
+        if self.workbook:
+            self.workbook.save(self.file_name)
+        else:
+            print(f"无法保存工作簿，未找到指定的工作簿：{self.file_name}")
 
 
 if __name__ == '__main__':
