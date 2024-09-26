@@ -2,12 +2,19 @@ import logging
 import os.path
 import tkinter as tk
 import tkinter.ttk as ttk
+from functools import partial
 from tkinter import filedialog, messagebox
 
 import cache_utils
 from cache_utils import compute_cache_data, get_all_sheet_names
 from excel_utils import open_excel_sheet
 from logger_utils import init_logging_basic_config
+
+FONT_12 = ("微软雅黑", 12)
+FONT_14 = ("微软雅黑", 14)
+
+root = tk.Tk()
+root.title("Excel 页签搜索工具")
 
 
 def select_path():
@@ -77,6 +84,7 @@ def open_path_window():
         cache_utils.set_config_value("usePath", new_path)
         cache_utils.set_path_data(new_path, sheet_name, include_subdirs, description)
         compute_cache_data()
+        refresh_menu_switch_dir()
         search()
         # 修改窗口标题
         root.title(f"Excel 页签搜索工具 - 设置路径：{new_path}")
@@ -146,6 +154,7 @@ def change_path_window():
         cache_utils.set_config_value("usePath", selected_path)
         # 加载
         compute_cache_data()
+        refresh_menu_switch_dir()
         search()
         root.title(f"Excel 页签搜索工具 - 设置路径：{selected_path}")
         new_window.destroy()
@@ -174,6 +183,28 @@ def search():
                 tree.insert('', tk.END, values=(sheet_name, excel_name))
 
 
+def handle_menu_item_click(path):
+    cache_utils.set_config_value("usePath", path)
+    compute_cache_data()
+    refresh_menu_switch_dir()
+    search()
+    root.title(f"Excel 页签搜索工具 - 设置路径：{path}")
+
+
+def refresh_menu_switch_dir():
+    global switch_menu
+    # 点击选择目录删除所有目录
+    while switch_menu.index('end') is not None and switch_menu.index('end') >= 0:
+        switch_menu.delete(switch_menu.index('end'))
+    for row in cache_utils.get_all_path_data():
+        # 添加命令和参数，以便在点击菜单项时执行相应操作
+        command_with_arg = partial(handle_menu_item_click, row["path"])
+        command_text = row["path"]
+        if row["path"] == cache_utils.get_config_value("usePath"):
+            command_text += " ✔"
+        switch_menu.add_command(label=command_text, command=command_with_arg)
+
+
 if __name__ == '__main__':
     init_logging_basic_config()
 
@@ -181,9 +212,6 @@ if __name__ == '__main__':
     cache_utils.create_config_sheet_header()
     # 所有路径
     cache_utils.create_all_path_sheet_header()
-
-    root = tk.Tk()
-    root.title("Excel 页签搜索工具")
 
     # 禁用最大化按钮
     root.resizable(False, False)
@@ -194,15 +222,16 @@ if __name__ == '__main__':
     # 创建设置菜单
     setting_menu = tk.Menu(menu_bar, tearoff=0)
 
-    FONT_12 = ("微软雅黑", 12)
-    FONT_14 = ("微软雅黑", 14)
-
     # 添加更改路径选项
     setting_menu.add_command(label="添加目录", command=open_path_window)
-    setting_menu.add_command(label="选择目录", command=change_path_window)
+    setting_menu.add_command(label="查看目录", command=change_path_window)
 
     # 将设置菜单添加到菜单栏
     menu_bar.add_cascade(label="设置", menu=setting_menu)
+
+    # # 添加动态菜单项
+    switch_menu = tk.Menu(menu_bar, tearoff=0)
+    menu_bar.add_cascade(label="切换目录", menu=switch_menu)
 
     # 将菜单栏添加到窗口
     root.config(menu=menu_bar)
@@ -272,13 +301,19 @@ if __name__ == '__main__':
 
     entry.bind('<Return>', on_enter)
 
-    # 先加载窗口，再初始化数据
-    use_path = cache_utils.get_config_value("usePath")
-    if cache_utils.get_path_data(use_path):
-        compute_cache_data()
-        root.title(f"Excel 页签搜索工具 - 设置路径：{use_path}")
-        search()
-    else:
-        open_path_window()
+
+    def on_window_load():
+        # 先加载窗口，再初始化数据
+        use_path = cache_utils.get_config_value("usePath")
+        if cache_utils.get_path_data(use_path):
+            compute_cache_data()
+            refresh_menu_switch_dir()
+            root.title(f"Excel 页签搜索工具 - 设置路径：{use_path}")
+            search()
+        else:
+            open_path_window()
+
+
+    root.after_idle(on_window_load)
 
     root.mainloop()
