@@ -199,7 +199,7 @@ def refresh_menu_switch_dir():
     for row in cache_utils.get_all_path_data():
         # 添加命令和参数，以便在点击菜单项时执行相应操作
         command_with_arg = partial(handle_menu_item_click, row["path"])
-        command_text = row["path"]
+        command_text = "[" + row["sheet_name"] + "] " + row["path"]
         if row["path"] == cache_utils.get_config_value("usePath"):
             command_text += " ✔"
         switch_menu.add_command(label=command_text, command=command_with_arg)
