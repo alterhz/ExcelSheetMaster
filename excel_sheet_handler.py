@@ -5,20 +5,22 @@ class ExcelSheetHandler:
     def __init__(self, file_name, sheet_name):
         self.file_name = file_name
         self.sheet_name = sheet_name
-        if not self.check_workbook_exists():
-            print(f"无法找到指定的工作簿：{self.file_name}")
-            self.workbook = None
-        else:
-            self.workbook = openpyxl.load_workbook(self.file_name)
+        self.workbook = self.load_workbook()
 
     def __enter__(self):
-        if not self.check_workbook_exists():
-            print(f"无法找到指定的工作簿：{self.file_name}")
-            return None
-        self.workbook = openpyxl.load_workbook(self.file_name)
+        self.load_workbook()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def load_workbook(self):
+        if not self.check_workbook_exists():
+            print(f"无法找到指定的工作簿：{self.file_name}")
+            return None
+        return openpyxl.load_workbook(self.file_name)
+
+    def close(self):
         if self.workbook is not None:
             self.workbook.close()
 

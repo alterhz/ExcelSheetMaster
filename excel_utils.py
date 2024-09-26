@@ -11,6 +11,7 @@ def get_excel_sheet_names(file_name):
     try:
         workbook = openpyxl.load_workbook(file_name)
         sheet_names = workbook.sheetnames
+        workbook.close()
         return sheet_names
     except Exception as e:
         return f"发生错误：{e}"
