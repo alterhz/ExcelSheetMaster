@@ -3,35 +3,18 @@ import os.path
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import filedialog, messagebox
-from tkinter.font import Font
 
 import cache_utils
 from cache_utils import compute_cache_data, get_all_sheet_names
-from config import ConfigHandler
 from excel_utils import open_excel_sheet
 from logger_utils import init_logging_basic_config
 
-init_logging_basic_config()
 
-# 配置
-cache_utils.create_config_sheet_header()
-# 所有路径
-cache_utils.create_all_path_sheet_header()
-
-root = tk.Tk()
-root.title("Excel 页签搜索工具")
-
-# 禁用最大化按钮
-root.resizable(False, False)
-
-# 创建菜单栏
-menu_bar = tk.Menu(root)
-
-# 创建设置菜单
-setting_menu = tk.Menu(menu_bar, tearoff=0)
-
-FONT_12 = ("微软雅黑", 12)
-FONT_14 = ("微软雅黑", 14)
+def select_path():
+    root = tk.Tk()
+    root.withdraw()
+    path = filedialog.askdirectory()
+    return path
 
 
 def open_path_window():
@@ -94,6 +77,7 @@ def open_path_window():
         cache_utils.set_config_value("usePath", new_path)
         cache_utils.set_path_data(new_path, sheet_name, include_subdirs, description)
         compute_cache_data()
+        search()
         # 修改窗口标题
         root.title(f"Excel 页签搜索工具 - 设置路径：{new_path}")
         logging.info(f"更改路径为：{new_path}，名称：{sheet_name}，描述：{description}，是否包含子目录：{include_subdirs}")
@@ -162,6 +146,7 @@ def change_path_window():
         cache_utils.set_config_value("usePath", selected_path)
         # 加载
         compute_cache_data()
+        search()
         root.title(f"Excel 页签搜索工具 - 设置路径：{selected_path}")
         new_window.destroy()
 
@@ -169,49 +154,8 @@ def change_path_window():
     confirm_button.grid(row=4, column=0, columnspan=2)
 
 
-# 添加更改路径选项
-setting_menu.add_command(label="添加目录", command=open_path_window)
-setting_menu.add_command(label="选择目录", command=change_path_window)
-
-# 将设置菜单添加到菜单栏
-menu_bar.add_cascade(label="设置", menu=setting_menu)
-
-# 将菜单栏添加到窗口
-root.config(menu=menu_bar)
-
-
-def select_path():
-    root = tk.Tk()
-    root.withdraw()
-    path = filedialog.askdirectory()
-    return path
-
-
-use_path = cache_utils.get_config_value("usePath")
-if cache_utils.get_path_data(use_path):
-    compute_cache_data()
-    root.title(f"Excel 页签搜索工具 - 设置路径：{use_path}")
-else:
-    open_path_window()
-
-# 创建可选列表（Combobox）
-options = ["页签名称", "工作簿名称"]
-combo_box = ttk.Combobox(root, values=options, state='readonly', font=FONT_14, width=10)
-combo_box.current(0)
-combo_box.grid(row=0, column=0)
-
-# 创建文本框
-entry = tk.Entry(root, width=50, font=FONT_14)
-entry.grid(row=0, column=1)
-entry.focus_set()  # 默认激活文本框
-
-# 创建一个框架用于包裹按钮，模拟外边距
-button_frame = tk.Frame(root)
-button_frame.grid(row=0, column=2, padx=5, pady=3)
-
-
-# 创建按钮
 def search():
+    global tree, entry, combo_box
     tree.delete(*tree.get_children())
     search_text = entry.get().strip().lower()
     sheet_names = get_all_sheet_names()
@@ -230,54 +174,111 @@ def search():
                 tree.insert('', tk.END, values=(sheet_name, excel_name))
 
 
-button = tk.Button(button_frame, text="模糊搜索", command=search, font=FONT_14, padx=15, pady=5)
-button.pack()
+if __name__ == '__main__':
+    init_logging_basic_config()
 
-# 创建一个框架用于包裹 Treeview
-tree_frame = tk.Frame(root)
-tree_frame.grid(row=1, column=0, columnspan=3, padx=5, pady=3)
+    # 配置
+    cache_utils.create_config_sheet_header()
+    # 所有路径
+    cache_utils.create_all_path_sheet_header()
 
-style = ttk.Style()
-# 修改 Treeview 的字体大小
-style.configure("Treeview", font=FONT_12)
-style.configure("Treeview.Heading", font=("微软雅黑", 12, "bold"))
+    root = tk.Tk()
+    root.title("Excel 页签搜索工具")
 
-# 创建 Treeview
-tree = ttk.Treeview(tree_frame, columns=('Sheet Name', 'Excel Name'), show='headings')
-tree.heading('Sheet Name', text='页签名称')
-tree.heading('Excel Name', text='工作簿名称')
-tree.column('Sheet Name', width=500, anchor='center')
-tree.column('Excel Name', width=400, anchor='center')
-# 设置 Treeview 的高度为 10 行（可根据实际需求调整）
-tree.configure(height=30)
-# 创建垂直滚动条
-v_scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
-v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-# 将 Treeview 的 yview 方法与垂直滚动条关联
-tree.configure(yscrollcommand=v_scrollbar.set)
-tree.pack(fill=tk.BOTH, expand=True)
+    # 禁用最大化按钮
+    root.resizable(False, False)
+
+    # 创建菜单栏
+    menu_bar = tk.Menu(root)
+
+    # 创建设置菜单
+    setting_menu = tk.Menu(menu_bar, tearoff=0)
+
+    FONT_12 = ("微软雅黑", 12)
+    FONT_14 = ("微软雅黑", 14)
+
+    # 添加更改路径选项
+    setting_menu.add_command(label="添加目录", command=open_path_window)
+    setting_menu.add_command(label="选择目录", command=change_path_window)
+
+    # 将设置菜单添加到菜单栏
+    menu_bar.add_cascade(label="设置", menu=setting_menu)
+
+    # 将菜单栏添加到窗口
+    root.config(menu=menu_bar)
+
+    # 创建可选列表（Combobox）
+    options = ["页签名称", "工作簿名称"]
+    combo_box = ttk.Combobox(root, values=options, state='readonly', font=FONT_14, width=10)
+    combo_box.current(0)
+    combo_box.grid(row=0, column=0)
+
+    # 创建文本框
+    entry = tk.Entry(root, width=50, font=FONT_14)
+    entry.grid(row=0, column=1)
+    entry.focus_set()  # 默认激活文本框
+
+    # 创建一个框架用于包裹按钮，模拟外边距
+    button_frame = tk.Frame(root)
+    button_frame.grid(row=0, column=2, padx=5, pady=3)
+
+    # 创建按钮
+    button = tk.Button(button_frame, text="模糊搜索", command=search, font=FONT_14, padx=15, pady=5)
+    button.pack()
+
+    # 创建一个框架用于包裹 Treeview
+    tree_frame = tk.Frame(root)
+    tree_frame.grid(row=1, column=0, columnspan=3, padx=5, pady=3)
+
+    style = ttk.Style()
+    # 修改 Treeview 的字体大小
+    style.configure("Treeview", font=FONT_12)
+    style.configure("Treeview.Heading", font=("微软雅黑", 12, "bold"))
+
+    # 创建 Treeview
+    tree = ttk.Treeview(tree_frame, columns=('Sheet Name', 'Excel Name'), show='headings')
+    tree.heading('Sheet Name', text='页签名称')
+    tree.heading('Excel Name', text='工作簿名称')
+    tree.column('Sheet Name', width=500, anchor='center')
+    tree.column('Excel Name', width=400, anchor='center')
+    # 设置 Treeview 的高度为 10 行（可根据实际需求调整）
+    tree.configure(height=30)
+    # 创建垂直滚动条
+    v_scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
+    v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    # 将 Treeview 的 yview 方法与垂直滚动条关联
+    tree.configure(yscrollcommand=v_scrollbar.set)
+    tree.pack(fill=tk.BOTH, expand=True)
 
 
-def on_double_click(event):
-    item = tree.selection()
-    if item:
-        values = tree.item(item, "values")
-        sheet_name = values[0]
-        use_path = cache_utils.get_config_value("usePath")
-        excel_name = use_path + "/" + values[1]
-        open_excel_sheet(excel_name, sheet_name)
-        print(f"打开页签 {sheet_name}，工作簿 {excel_name}。")
+    def on_double_click(event):
+        item = tree.selection()
+        if item:
+            values = tree.item(item, "values")
+            sheet_name = values[0]
+            use_path = cache_utils.get_config_value("usePath")
+            excel_name = use_path + "/" + values[1]
+            open_excel_sheet(excel_name, sheet_name)
+            print(f"打开页签 {sheet_name}，工作簿 {excel_name}。")
 
 
-tree.bind("<Double-1>", on_double_click)
+    tree.bind("<Double-1>", on_double_click)
 
 
-# 绑定回车键事件到按钮的点击事件
-def on_enter(event):
-    search()
-    return 'break'  # 阻止回车键的默认换行操作
+    def on_enter(event):
+        search()
+        return 'break'  # 阻止回车键的默认换行操作
 
 
-entry.bind('<Return>', on_enter)
+    entry.bind('<Return>', on_enter)
 
-root.mainloop()
+    # 先加载窗口，再初始化数据
+    use_path = cache_utils.get_config_value("usePath")
+    if cache_utils.get_path_data(use_path):
+        compute_cache_data()
+        root.title(f"Excel 页签搜索工具 - 设置路径：{use_path}")
+        search()
+    else:
+        open_path_window()
+
+    root.mainloop()
