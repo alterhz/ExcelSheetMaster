@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 import os.path
 import subprocess
 import time
@@ -13,7 +14,7 @@ from excel_utils import open_excel_sheet
 from logger_utils import init_logging_basic_config
 
 FONT_12 = ("微软雅黑", 12)
-FONT_14 = ("微软雅黑", 14)
+FONT_BOLD_12 = ("微软雅黑", 12, "bold")
 
 root = tk.Tk()
 root.title("Excel 页签搜索工具")
@@ -176,7 +177,6 @@ def search():
     search_text = entry.get().strip().lower()
     sheet_names = get_all_sheet_names()
     search_type_index = combo_box.current()
-    print(f"搜索类型：{search_type_index}，搜索内容：{search_text}")
     values_to_insert = []
     for item in sheet_names:
         excel_name = item["name"]
@@ -193,7 +193,7 @@ def search():
         tree.insert('', tk.END, values=values)
 
 
-def handle_menu_item_click(path):
+def change_use_path(path):
     cache_utils.set_config_value("usePath", path)
     refresh_switch_dir()
 
@@ -205,7 +205,7 @@ def refresh_menu_switch_dir():
         switch_menu.delete(switch_menu.index('end'))
     for row in cache_utils.get_all_path_data():
         # 添加命令和参数，以便在点击菜单项时执行相应操作
-        command_with_arg = partial(handle_menu_item_click, row["path"])
+        command_with_arg = partial(change_use_path, row["path"])
         command_text = "[" + row["sheet_name"] + "] " + row["path"]
         if row["path"] == cache_utils.get_config_value("usePath"):
             command_text += " ✔"
@@ -219,7 +219,7 @@ def refresh_toolbar():
             widget.destroy()
     for row in cache_utils.get_all_path_data():
         # 添加命令和参数，以便在点击菜单项时执行相应操作
-        command_with_arg = partial(handle_menu_item_click, row["path"])
+        command_with_arg = partial(change_use_path, row["path"])
         command_text = row["sheet_name"]
         if row["path"] == cache_utils.get_config_value("usePath"):
             command_text += " ✔"
@@ -229,12 +229,10 @@ def refresh_toolbar():
 
 
 if __name__ == '__main__':
-    init_logging_basic_config()
+    # Pyinstaller fix
+    multiprocessing.freeze_support()
 
-    # 配置
-    cache_utils.get_config_cache_sheet()
-    # 所有路径
-    cache_utils.get_all_path_cache_sheet()
+    init_logging_basic_config()
 
     # 禁用最大化按钮
     root.resizable(False, False)
@@ -302,12 +300,12 @@ if __name__ == '__main__':
     row_index += 1
     # 创建可选列表（Combobox）
     options = ["页签名称", "工作簿名称"]
-    combo_box = ttk.Combobox(root, values=options, state='readonly', font=FONT_14, width=10)
+    combo_box = ttk.Combobox(root, values=options, state='readonly', font=FONT_BOLD_12, width=10)
     combo_box.current(0)
     combo_box.grid(row=row_index, column=0)
 
     # 创建文本框
-    entry = tk.Entry(root, width=50, font=FONT_14)
+    entry = tk.Entry(root, width=65, font=FONT_BOLD_12)
     entry.grid(row=row_index, column=1)
     entry.focus_set()  # 默认激活文本框
 
@@ -316,7 +314,7 @@ if __name__ == '__main__':
     button_frame.grid(row=row_index, column=2, padx=5, pady=3)
 
     # 创建按钮
-    button = tk.Button(button_frame, text="模糊搜索", command=search, font=FONT_14, padx=15, pady=5)
+    button = tk.Button(button_frame, text="模糊搜索", command=search, font=FONT_BOLD_12, padx=15, pady=5)
     button.pack()
 
     row_index += 1
