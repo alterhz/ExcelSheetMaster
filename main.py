@@ -411,13 +411,13 @@ if __name__ == '__main__':
 
 
     def on_close():
+        global running
+        running = False
         # 停止后台线程
         cache_utils.stop_back_thread()
         # 关闭缓存文件
         cache_utils.close_cache()
-
-        global running
-        running = False
+        
         root.after(100, root.destroy)
 
     root.protocol("WM_DELETE_WINDOW", on_close)

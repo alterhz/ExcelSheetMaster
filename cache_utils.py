@@ -26,15 +26,10 @@ waiting_run_excels = []
 
 def close_cache():
     global g_cache_config, g_cache_all_path
-    if g_cache_config:
-        g_cache_config.close()
-        g_cache_config = None
-    if g_cache_all_path:
-        g_cache_all_path.close()
-        g_cache_all_path = None
-    for sheet in g_cache_all_sheet.values():
-        sheet.close()
+    g_cache_config = None
+    g_cache_all_path = None
     g_cache_all_sheet.clear()
+    ExcelSheetHandler.close_all_workbook()
 
 
 def create_excel_sheet(excel_name, sheet_name=None):

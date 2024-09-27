@@ -4,29 +4,37 @@ import openpyxl
 
 
 class ExcelSheetHandler:
+    # 保存已经打开的工作簿
+    static_all_workbook = {}
+
     def __init__(self, file_name, sheet_name):
         self.file_name = file_name
         self.sheet_name = sheet_name
-        self.workbook = self.load_workbook()
-        self.worksheet = None
-
-    def __enter__(self):
+        self.workbook = None
         self.load_workbook()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
+        self.worksheet = None
 
     def load_workbook(self):
         if not self.check_workbook_exists():
             logging.error(f"无法找到指定的工作簿：{self.file_name}")
             return None
-        return openpyxl.load_workbook(self.file_name)
+        # static_all_workbook 是一个字典，键是文件名，值是工作簿对象
+        if self.file_name in ExcelSheetHandler.static_all_workbook:
+            self.workbook = ExcelSheetHandler.static_all_workbook[self.file_name]
+            logging.debug(f"打开工作簿：{self.file_name}")
+        else:
+            self.workbook = openpyxl.load_workbook(self.file_name)
+            ExcelSheetHandler.static_all_workbook[self.file_name] = self.workbook
+            logging.debug(f"加载工作簿：{self.file_name}")
 
-    def close(self):
-        if self.workbook is not None:
-            self.workbook.close()
-            logging.debug(f"关闭工作簿：{self.file_name}, {self.sheet_name}")
+        return self.workbook
+
+    @staticmethod
+    def close_all_workbook():
+        for workbook_name, workbook in ExcelSheetHandler.static_all_workbook.items():
+            workbook.close()
+            logging.debug(f"关闭工作簿：{workbook_name}")
+        ExcelSheetHandler.static_all_workbook.clear()
 
     def check_workbook_exists(self):
         try:
