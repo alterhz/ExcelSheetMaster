@@ -193,6 +193,8 @@ def search():
                 values_to_insert.append((sheet_name, excel_name))
     for values in values_to_insert:
         tree.insert('', tk.END, values=values)
+    # 更新状态栏，显示搜索结果数量
+    status_bar.config(text=f"搜索到 {len(values_to_insert)} 条结果。")
 
 
 def change_use_path(path):
@@ -346,6 +348,11 @@ if __name__ == '__main__':
     tree.configure(yscrollcommand=v_scrollbar.set)
     tree.pack(fill=tk.BOTH, expand=True)
 
+    row_index += 1
+    # 创建状态栏标签
+    status_bar = tk.Label(root, text="状态栏信息", bd=1, relief=tk.SUNKEN)
+    status_bar.grid(row=row_index, column=0, sticky=tk.W + tk.E, columnspan=3)
+
 
     def on_double_click(event):
         item = tree.selection()
@@ -382,9 +389,20 @@ if __name__ == '__main__':
 
     running = True
 
+    thread_idle = False
 
     def heartbeat():
         cache_utils.run_thread()
+        if cache_utils.is_all_empty():
+            global thread_idle
+            if not thread_idle:
+                thread_idle = True
+                status_bar.config(text="Excel页签加载完毕...")
+        else:
+            thread_idle = False
+            status_bar.config(
+                text="正在加载Excel页签, 待加载Excel数量：" + str(cache_utils.get_waiting_run_excel_count()))
+
         if running:
             root.after(100, heartbeat)
 
@@ -393,14 +411,17 @@ if __name__ == '__main__':
 
 
     def on_close():
+        # 停止后台线程
+        cache_utils.stop_back_thread()
+        # 关闭缓存文件
+        cache_utils.close_cache()
+
         global running
         running = False
-        root.destroy()
+        root.after(100, root.destroy)
 
     root.protocol("WM_DELETE_WINDOW", on_close)
 
     root.mainloop()
-    # 停止后台线程
-    cache_utils.stop_back_thread()
-    # 关闭缓存文件
-    cache_utils.close_cache()
+
+

@@ -167,8 +167,6 @@ def get_path_sheet_name(path):
 
 
 def compute_cache_data():
-    # 统计逻辑耗时
-    start_time = time.time()
     # 计算缓存数据
     use_path = get_config_value("usePath")
     use_sheet_name = get_path_sheet_name(use_path)
@@ -205,10 +203,8 @@ def compute_cache_data():
             logging.info("新增待处理文件：" + name)
     # 保存
     sheet_handler.save_workbook()
-    # 计算耗时
-    t2 = time.time()
-    logging.info(f"计算缓存数据耗时：{t2 - start_time:.2}秒，更新文件数量：{modified_count}")
 
+    # 构建要处理的文件列表
     use_path = get_config_value("usePath")
     use_sheet_name = get_path_sheet_name(use_path)
     # 获取待处理的所有文件列表
@@ -221,8 +217,16 @@ def compute_cache_data():
             waiting_run_excels.append(use_path + "/" + row["name"])
 
 
+def is_all_empty():
+    global waiting_run_excels
+    return qIn.empty() and qOut.empty() and waiting_run_excels.__len__() == 0
+
+
+def get_waiting_run_excel_count():
+    return waiting_run_excels.__len__()
+
+
 def run_thread():
-    t1 = time.time()
     if qIn.empty():
         # 获取10条数据waiting_run_excels
         global waiting_run_excels
@@ -237,11 +241,13 @@ def run_thread():
                 waiting_run_excels = []
 
     if not qOut.empty():
+        t1 = time.time()
         excel_sheets = qOut.get()
         use_path = get_config_value("usePath")
         use_path_name = get_path_sheet_name(use_path)
         sheet_handler = get_cache_sheet(use_path_name)
         data = sheet_handler.get_all_data()
+        count = 0
         # 打印
         for excel_name, sheet_names in excel_sheets.items():
             # 获取路径，不包含文件名
@@ -253,12 +259,14 @@ def run_thread():
                         row["sheets"] = filter_sheet_names(sheet_names)
                         row["need_update"] = False
                         sheet_handler.write_row_data(row["row"], row)
+                        count += 1
                         # logging.info(f"更新页签列表：{excel_name}，页签数：{sheet_names}")
                         break
             else:
                 logging.warning(f"路径不匹配：{path}，配置路径：{use_path}")
         # 保存
-        sheet_handler.save_workbook()
+        if count > 0:
+            sheet_handler.save_workbook()
         t2 = time.time()
         logging.info(f"处理缓存数据耗时：{t2 - t1:.2}秒")
 
