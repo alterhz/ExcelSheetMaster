@@ -1,5 +1,6 @@
 import logging
 import os.path
+import time
 import tkinter as tk
 import tkinter.ttk as ttk
 from functools import partial
@@ -83,17 +84,24 @@ def open_path_window():
             return
         cache_utils.set_config_value("usePath", new_path)
         cache_utils.set_path_data(new_path, sheet_name, include_subdirs, description)
-        compute_cache_data()
-        refresh_menu_switch_dir()
-        refresh_toolbar()
-        search()
-        # 修改窗口标题
-        root.title(f"Excel 页签搜索工具 - 设置路径：{new_path}")
+        refresh_switch_dir()
         logging.info(f"更改路径为：{new_path}，名称：{sheet_name}，描述：{description}，是否包含子目录：{include_subdirs}")
         path_window.destroy()
 
     save_button = tk.Button(path_window, text="保存", command=save_path, font=FONT_12)
     save_button.grid(row=4, column=0, columnspan=2)
+
+
+def refresh_switch_dir():
+    t1 = time.time()
+    compute_cache_data()
+    refresh_menu_switch_dir()
+    refresh_toolbar()
+    path = cache_utils.get_config_value("usePath")
+    root.title(f"Excel 页签搜索工具 - 设置路径：{path}")
+    search()
+    t2 = time.time()
+    logging.debug(f"刷新目录耗时：{t2 - t1:.2f} 秒。")
 
 
 def change_path_window():
@@ -154,11 +162,7 @@ def change_path_window():
         selected_path = cb_path.get()
         cache_utils.set_config_value("usePath", selected_path)
         # 加载
-        compute_cache_data()
-        refresh_menu_switch_dir()
-        refresh_toolbar()
-        search()
-        root.title(f"Excel 页签搜索工具 - 设置路径：{selected_path}")
+        refresh_switch_dir()
         new_window.destroy()
 
     confirm_button = tk.Button(new_window, text="确认选择", command=confirm_selection, font=FONT_12)
@@ -172,26 +176,25 @@ def search():
     sheet_names = get_all_sheet_names()
     search_type_index = combo_box.current()
     print(f"搜索类型：{search_type_index}，搜索内容：{search_text}")
+    values_to_insert = []
     for item in sheet_names:
         excel_name = item["name"]
         sheet_name = item["sheet_name"]
         if search_type_index == 0:
             # 页签搜索
             if search_text in sheet_name.lower():
-                tree.insert('', tk.END, values=(sheet_name, excel_name))
+                values_to_insert.append((sheet_name, excel_name))
         else:
             # 工作簿搜索
             if search_text in excel_name.lower():
-                tree.insert('', tk.END, values=(sheet_name, excel_name))
+                values_to_insert.append((sheet_name, excel_name))
+    for values in values_to_insert:
+        tree.insert('', tk.END, values=values)
 
 
 def handle_menu_item_click(path):
     cache_utils.set_config_value("usePath", path)
-    compute_cache_data()
-    refresh_menu_switch_dir()
-    refresh_toolbar()
-    search()
-    root.title(f"Excel 页签搜索工具 - 设置路径：{path}")
+    refresh_switch_dir()
 
 
 def refresh_menu_switch_dir():
@@ -223,13 +226,14 @@ def refresh_toolbar():
         button1.grid(row=row_index, column=column_index, padx=2, pady=2)
         column_index += 1
 
+
 if __name__ == '__main__':
     init_logging_basic_config()
 
     # 配置
-    cache_utils.create_config_sheet_header()
+    cache_utils.get_config_cache_sheet()
     # 所有路径
-    cache_utils.create_all_path_sheet_header()
+    cache_utils.get_all_path_cache_sheet()
 
     # 禁用最大化按钮
     root.resizable(False, False)
@@ -339,11 +343,7 @@ if __name__ == '__main__':
         # 先加载窗口，再初始化数据
         use_path = cache_utils.get_config_value("usePath")
         if cache_utils.get_path_data(use_path):
-            compute_cache_data()
-            refresh_menu_switch_dir()
-            refresh_toolbar()
-            root.title(f"Excel 页签搜索工具 - 设置路径：{use_path}")
-            search()
+            refresh_switch_dir()
         else:
             open_path_window()
 
@@ -351,3 +351,5 @@ if __name__ == '__main__':
     root.after_idle(on_window_load)
 
     root.mainloop()
+    # 关闭缓存文件
+    cache_utils.close_cache()

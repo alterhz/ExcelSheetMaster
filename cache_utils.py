@@ -12,6 +12,18 @@ CACHE_EXCEL_NAME = "cache.xlsx"
 CONFIG_SHEET_NAME = "config"
 ALL_PATH_SHEET_NAME = "allPath"
 
+g_cache_config: ExcelSheetHandler = None
+g_cache_all_path: ExcelSheetHandler = None
+g_cache_all_sheet: dict = {}
+
+
+def close_cache():
+    global g_cache_config, g_cache_all_path
+    if g_cache_config:
+        g_cache_config.close()
+    if g_cache_all_path:
+        g_cache_all_path.close()
+
 
 def create_excel_sheet(excel_name, sheet_name=None):
     """
@@ -24,119 +36,130 @@ def create_excel_sheet(excel_name, sheet_name=None):
     返回：
     bool：如果创建了文件或者页签返回 True，否则返回 False。
     """
-    file_created = False
     sheet_created = False
     if not os.path.exists(excel_name):
         wb = openpyxl.Workbook()
         wb.save(excel_name)
-        file_created = True
     workbook = openpyxl.load_workbook(excel_name)
     if sheet_name and sheet_name not in workbook.sheetnames:
         workbook.create_sheet(sheet_name)
         sheet_created = True
-    workbook.save(excel_name)
-    return file_created or sheet_created
+        workbook.save(excel_name)
+    return sheet_created
 
 
-def create_config_sheet_header():
-    if create_excel_sheet(CACHE_EXCEL_NAME, CONFIG_SHEET_NAME):
-        with ExcelSheetHandler(CACHE_EXCEL_NAME, CONFIG_SHEET_NAME) as handler_config:
-            handler_config.insert_column_header(1, "cs", "String", "key", "键", 20)
-            handler_config.insert_column_header(2, "cs", "String", "value", "值", 30)
-            handler_config.save_workbook()
+def get_config_cache_sheet():
+    global g_cache_config
+    if g_cache_config is None:
+        create_sheet = create_excel_sheet(CACHE_EXCEL_NAME, CONFIG_SHEET_NAME)
+        g_cache_config = ExcelSheetHandler(CACHE_EXCEL_NAME, CONFIG_SHEET_NAME)
+        if create_sheet:
+            g_cache_config.insert_column_header(1, "cs", "String", "key", "键", 20)
+            g_cache_config.insert_column_header(2, "cs", "String", "value", "值", 30)
+            g_cache_config.save_workbook()
+            logging.info(f"创建缓存文件 {CACHE_EXCEL_NAME} 的工作表 {CONFIG_SHEET_NAME}，并插入列头。")
+    return g_cache_config
+
+
+def get_all_path_cache_sheet():
+    global g_cache_all_path
+    if g_cache_all_path is None:
+        create_sheet = create_excel_sheet(CACHE_EXCEL_NAME, ALL_PATH_SHEET_NAME)
+        g_cache_all_path = ExcelSheetHandler(CACHE_EXCEL_NAME, ALL_PATH_SHEET_NAME)
+        if create_sheet:
+            g_cache_all_path.insert_column_header(1, "cs", "String", "path", "路径", 60)
+            g_cache_all_path.insert_column_header(2, "cs", "String", "sheet_name", "页签名称,自动生成", 20)
+            g_cache_all_path.insert_column_header(3, "cs", "Boolean", "includeSubDir", "是否包含子文件夹", 20)
+            g_cache_all_path.insert_column_header(4, "cs", "String", "desc", "描述", 60)
+            g_cache_all_path.save_workbook()
+            logging.info(f"创建缓存文件 {CACHE_EXCEL_NAME} 的工作表 {ALL_PATH_SHEET_NAME}，并插入列头。")
+    return g_cache_all_path
+
+
+def get_cache_sheet(sheet_name):
+    global g_cache_all_sheet
+    if g_cache_all_sheet.get(sheet_name) is None:
+        create_sheet = create_excel_sheet(CACHE_EXCEL_NAME, sheet_name)
+        g_cache_all_sheet[sheet_name] = ExcelSheetHandler(CACHE_EXCEL_NAME, sheet_name)
+        if create_sheet:
+            g_cache_all_sheet[sheet_name].insert_column_header(1, "cs", "String", "name", "文件名", 50)
+            g_cache_all_sheet[sheet_name].insert_column_header(2, "cs", "String", "lastModified", "文件修改时间", 50)
+            g_cache_all_sheet[sheet_name].insert_column_header(3, "cs", "String", "sheets", "页签列表", 50)
+            g_cache_all_sheet[sheet_name].save_workbook()
+            logging.info(f"创建缓存文件 {CACHE_EXCEL_NAME} 的工作表 {sheet_name}，并插入列头。")
+    return g_cache_all_sheet[sheet_name]
 
 
 def set_config_value(key, value):
-    with ExcelSheetHandler(CACHE_EXCEL_NAME, CONFIG_SHEET_NAME) as handler_config:
-        data = handler_config.get_all_data()
-        for row in data:
-            if row["key"] == key:
-                row["value"] = value
-                handler_config.write_row_data(row["row"], row)
-                handler_config.save_workbook()
-                return
-        row = {"key": key, "value": value}
-        handler_config.write_row_data(handler_config.get_max_row_number() + 1, row)
-        handler_config.save_workbook()
+    config_cache = get_config_cache_sheet()
+    data = config_cache.get_all_data()
+    for row in data:
+        if row["key"] == key:
+            row["value"] = value
+            config_cache.write_row_data(row["row"], row)
+            config_cache.save_workbook()
+            return
+    row = {"key": key, "value": value}
+    config_cache.write_row_data(g_cache_config.get_max_row_number() + 1, row)
+    config_cache.save_workbook()
 
 
 def get_config_value(key):
-    with ExcelSheetHandler(CACHE_EXCEL_NAME, CONFIG_SHEET_NAME) as handler_config:
-        data = handler_config.get_all_data()
-        for row in data:
-            if row["key"] == key:
-                return row["value"]
+    config_cache = get_config_cache_sheet()
+    data = config_cache.get_all_data()
+    for row in data:
+        if row["key"] == key:
+            return row["value"]
     return None
 
 
-def create_all_path_sheet_header():
-    if create_excel_sheet(CACHE_EXCEL_NAME, ALL_PATH_SHEET_NAME):
-        with ExcelSheetHandler(CACHE_EXCEL_NAME, ALL_PATH_SHEET_NAME) as handler_all_path:
-            handler_all_path.insert_column_header(1, "cs", "String", "path", "路径", 60)
-            handler_all_path.insert_column_header(2, "cs", "String", "sheet_name", "页签名称,自动生成", 20)
-            handler_all_path.insert_column_header(3, "cs", "Boolean", "includeSubDir", "是否包含子文件夹", 20)
-            handler_all_path.insert_column_header(4, "cs", "String", "desc", "描述", 60)
-            handler_all_path.save_workbook()
+def set_path_data(path, sheet_name, include_subdir, desc):
+    all_path_sheet = get_all_path_cache_sheet()
+    data = all_path_sheet.get_all_data()
+    for row in data:
+        if row["path"] == path:
+            row["includeSubDir"] = include_subdir
+            row["desc"] = desc
+            all_path_sheet.write_row_data(row["row"], row)
+            all_path_sheet.save_workbook()
+            return
 
-
-def set_path_data(path, sheet_name, include_subdirs, desc):
-    with ExcelSheetHandler(CACHE_EXCEL_NAME, ALL_PATH_SHEET_NAME) as handler_all_path:
-        data = handler_all_path.get_all_data()
-        for row in data:
-            if row["path"] == path:
-                row["includeSubDir"] = include_subdirs
-                row["desc"] = desc
-                handler_all_path.write_row_data(row["row"], row)
-                handler_all_path.save_workbook()
-                return
-
-        row = {"path": path, "includeSubDir": include_subdirs, "desc": desc, "sheet_name": sheet_name}
-        handler_all_path.write_row_data(handler_all_path.get_max_row_number() + 1, row)
-        handler_all_path.save_workbook()
+    row = {"path": path, "includeSubDir": include_subdir, "desc": desc, "sheet_name": sheet_name}
+    all_path_sheet.write_row_data(all_path_sheet.get_max_row_number() + 1, row)
+    all_path_sheet.save_workbook()
 
 
 def get_path_data(path):
-    with ExcelSheetHandler(CACHE_EXCEL_NAME, ALL_PATH_SHEET_NAME) as handler_all_path:
-        data = handler_all_path.get_all_data()
-        for row in data:
-            if row["path"] == path:
-                return row
+    all_path_sheet = get_all_path_cache_sheet()
+    data = all_path_sheet.get_all_data()
+    for row in data:
+        if row["path"] == path:
+            return row
     return None
 
 
 def get_all_path_data():
-    with ExcelSheetHandler(CACHE_EXCEL_NAME, ALL_PATH_SHEET_NAME) as handler_all_path:
-        return handler_all_path.get_all_data()
+    all_path_sheet = get_all_path_cache_sheet()
+    return all_path_sheet.get_all_data()
 
 
 def get_path_sheet_name(path):
-    with ExcelSheetHandler(CACHE_EXCEL_NAME, ALL_PATH_SHEET_NAME) as handler_all_path:
-        data = handler_all_path.get_all_data()
-        for row in data:
-            if row["path"] == path:
-                return row["sheet_name"]
+    all_path_sheet = get_all_path_cache_sheet()
+    data = all_path_sheet.get_all_data()
+    for row in data:
+        if row["path"] == path:
+            return row["sheet_name"]
     return None
-
-
-def create_sheet_header(excel_name, sheet_name):
-    if create_excel_sheet(excel_name, sheet_name):
-        with ExcelSheetHandler(excel_name, sheet_name) as handler_sheet:
-            handler_sheet.insert_column_header(1, "cs", "String", "name", "Excel文件名", 50)
-            handler_sheet.insert_column_header(2, "cs", "String", "lastModified", "文件修改时间", 50)
-            handler_sheet.insert_column_header(3, "cs", "String", "sheets", "页签列表", 50)
-            handler_sheet.save_workbook()
 
 
 def compute_cache_data():
     use_path = get_config_value("usePath")
 
-    sheet_name = get_path_sheet_name(use_path)
+    use_sheet_name = get_path_sheet_name(use_path)
 
-    # 创建缓存文件
-    create_sheet_header(CACHE_EXCEL_NAME, sheet_name)
     # 计算缓存数据
-    handler = ExcelSheetHandler(CACHE_EXCEL_NAME, sheet_name)
-    data = handler.get_all_data()
+    sheet_handler = get_cache_sheet(use_sheet_name)
+    data = sheet_handler.get_all_data()
     # 遍历data转为字典key为文件名,value为行数据
     excel_map = {}
     for row in data:
@@ -163,7 +186,7 @@ def compute_cache_data():
                 sheet_names = filter_sheet_names(sheet_names)
                 row["lastModified"] = last_modified
                 row["sheets"] = sheet_names
-                handler.write_row_data(row["row"], row)
+                sheet_handler.write_row_data(row["row"], row)
                 logging.info("更新处理文件：" + name)
         else:
             # 新增数据
@@ -171,29 +194,28 @@ def compute_cache_data():
             # 转换sheet_names为字符串,每个sheet_name之间用excel单元格的换行符分隔
             sheet_names = filter_sheet_names(sheet_names)
             row = {"cs": "cs", "name": name, "lastModified": last_modified, "sheets": sheet_names}
-            handler.write_row_data(handler.get_max_row_number() + 1, row)
+            sheet_handler.write_row_data(sheet_handler.get_max_row_number() + 1, row)
             logging.info("新增处理文件：" + name)
     # 保存
-    handler.save_workbook()
+    sheet_handler.save_workbook()
     # 计算耗时
     t2 = time.time()
-    print(f"计算缓存数据耗时：{t2 - start_time}秒")
-    logging.info(f"计算缓存数据耗时：{t2 - start_time}秒")
+    logging.info(f"计算缓存数据耗时：{t2 - start_time:.2}秒")
 
 
 def get_all_sheet_names():
     use_path = get_config_value("usePath")
     sheet_name = get_path_sheet_name(use_path)
-    with ExcelSheetHandler(CACHE_EXCEL_NAME, sheet_name) as handlerRead:
-        data = handlerRead.get_all_data()
-        # 遍历 data 转为字典，key 为文件名，value 为行数据
-        sheet_names = []
-        for row in data:
-            sheets = row["sheets"]
-            if sheets:
-                for sheet_name in sheets.split('\n'):
-                    sheet_names.append({"name": row["name"], "sheet_name": sheet_name})
-        return sheet_names
+    handlerRead = get_cache_sheet(sheet_name)
+    data = handlerRead.get_all_data()
+    # 遍历 data 转为字典，key 为文件名，value 为行数据
+    sheet_names = []
+    for row in data:
+        sheets = row["sheets"]
+        if sheets:
+            for sheet_name in sheets.split('\n'):
+                sheet_names.append({"name": row["name"], "sheet_name": sheet_name})
+    return sheet_names
 
 
 # 过滤不包含|的页签名，并转为\n分隔的字符串

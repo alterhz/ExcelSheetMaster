@@ -1,3 +1,5 @@
+import logging
+
 import openpyxl
 
 
@@ -6,6 +8,7 @@ class ExcelSheetHandler:
         self.file_name = file_name
         self.sheet_name = sheet_name
         self.workbook = self.load_workbook()
+        self.worksheet = None
 
     def __enter__(self):
         self.load_workbook()
@@ -16,13 +19,14 @@ class ExcelSheetHandler:
 
     def load_workbook(self):
         if not self.check_workbook_exists():
-            print(f"无法找到指定的工作簿：{self.file_name}")
+            logging.error(f"无法找到指定的工作簿：{self.file_name}")
             return None
         return openpyxl.load_workbook(self.file_name)
 
     def close(self):
         if self.workbook is not None:
             self.workbook.close()
+            logging.debug(f"关闭工作簿：{self.file_name}")
 
     def check_workbook_exists(self):
         try:
@@ -31,17 +35,25 @@ class ExcelSheetHandler:
         except FileNotFoundError:
             return False
 
-    def create_sheet(self):
+    def create_sheet(self, can_create=True):
         if self.workbook is None:
-            print(f"无法找到指定的工作簿：{self.file_name}")
+            logging.error(f"无法打开工作簿 {self.file_name}。")
             return None
         try:
+            if self.worksheet is not None:
+                return self.worksheet
             if self.sheet_name not in self.workbook.sheetnames:
-                new_sheet = self.workbook.create_sheet(title=self.sheet_name)
-                print(f"页签不存在，{self.file_name}创建{self.sheet_name}")
-            return self.workbook[self.sheet_name]
+                if can_create:
+                    self.workbook.create_sheet(self.sheet_name)
+                    logging.info(f"在工作簿 {self.file_name} 中创建工作表 {self.sheet_name}。")
+                else:
+                    logging.error(f"在工作簿 {self.file_name} 中找不到工作表 {self.sheet_name}。")
+                    return None
+            logging.debug(f"打开工作簿 {self.file_name} 的工作表 {self.sheet_name}。")
+            self.worksheet = self.workbook[self.sheet_name]
+            return self.worksheet
         except FileNotFoundError:
-            print(f"无法找到指定的工作簿：{self.file_name}")
+            print(f"打开工作簿 {self.file_name} 的工作表 {self.sheet_name} 时出现错误。")
             return None
 
     def insert_column_header(self, index, cs, type_name, name, note, column_width=0):

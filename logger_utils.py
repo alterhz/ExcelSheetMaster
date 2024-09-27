@@ -3,7 +3,7 @@ import logging
 
 def init_logging_basic_config():
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.FileHandler('validator.log', encoding='utf-8'),
