@@ -1,5 +1,6 @@
 import logging
 import os.path
+import subprocess
 import time
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -270,6 +271,33 @@ if __name__ == '__main__':
 
     # 初始显示工具栏
     toolbar.grid(row=row_index, column=0, sticky='nsew', columnspan=3)
+
+    row_index += 1
+    # 创建工具栏框架
+    toolbar2 = tk.Frame(root, bd=1, relief='raised')
+
+
+    def run_tortoise_update():
+        # 弹窗确认是否更新
+        usePath = cache_utils.get_config_value("usePath")
+        if messagebox.askokcancel("SVN更新确认", f"确定要更新下面的目录吗？\n{usePath}"):
+            subprocess.run(["TortoiseProc.exe", "/command:update", f"/path:{usePath}", "/closeonend:0"])
+
+
+    btnSvnUpdate = tk.Button(toolbar2, text="SVN更新", command=run_tortoise_update)
+    btnSvnUpdate.grid(row=row_index, column=1, padx=2, pady=2)
+
+
+    def run_tortoise_commit():
+        usePath = cache_utils.get_config_value("usePath")
+        subprocess.run(["TortoiseProc.exe", "/command:commit", f"/path:{usePath}", "/closeonend:0"], shell=False)
+
+
+    btnSvnCommit = tk.Button(toolbar2, text="SVN提交", command=run_tortoise_commit)
+    btnSvnCommit.grid(row=row_index, column=2, padx=2, pady=2)
+
+    # 初始显示工具栏
+    toolbar2.grid(row=row_index, column=0, sticky='nsew', columnspan=3)
 
     row_index += 1
     # 创建可选列表（Combobox）
