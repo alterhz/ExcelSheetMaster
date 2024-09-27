@@ -85,6 +85,7 @@ def open_path_window():
         cache_utils.set_path_data(new_path, sheet_name, include_subdirs, description)
         compute_cache_data()
         refresh_menu_switch_dir()
+        refresh_toolbar()
         search()
         # 修改窗口标题
         root.title(f"Excel 页签搜索工具 - 设置路径：{new_path}")
@@ -155,6 +156,7 @@ def change_path_window():
         # 加载
         compute_cache_data()
         refresh_menu_switch_dir()
+        refresh_toolbar()
         search()
         root.title(f"Excel 页签搜索工具 - 设置路径：{selected_path}")
         new_window.destroy()
@@ -187,6 +189,7 @@ def handle_menu_item_click(path):
     cache_utils.set_config_value("usePath", path)
     compute_cache_data()
     refresh_menu_switch_dir()
+    refresh_toolbar()
     search()
     root.title(f"Excel 页签搜索工具 - 设置路径：{path}")
 
@@ -204,6 +207,21 @@ def refresh_menu_switch_dir():
             command_text += " ✔"
         switch_menu.add_command(label=command_text, command=command_with_arg)
 
+
+def refresh_toolbar():
+    column_index = 0
+    for widget in toolbar.winfo_children():
+        if isinstance(widget, tk.Button):
+            widget.destroy()
+    for row in cache_utils.get_all_path_data():
+        # 添加命令和参数，以便在点击菜单项时执行相应操作
+        command_with_arg = partial(handle_menu_item_click, row["path"])
+        command_text = row["sheet_name"]
+        if row["path"] == cache_utils.get_config_value("usePath"):
+            command_text += " ✔"
+        button1 = tk.Button(toolbar, text=command_text, command=command_with_arg)
+        button1.grid(row=row_index, column=column_index, padx=2, pady=2)
+        column_index += 1
 
 if __name__ == '__main__':
     init_logging_basic_config()
@@ -236,28 +254,43 @@ if __name__ == '__main__':
     # 将菜单栏添加到窗口
     root.config(menu=menu_bar)
 
+    # 行索引
+    row_index = 0
+
+    # 创建工具栏框架
+    toolbar = tk.Frame(root, bd=1, relief='raised')
+
+    # 配置网格布局参数
+    root.grid_rowconfigure(0, weight=0)
+    root.grid_columnconfigure(0, weight=1)
+
+    # 初始显示工具栏
+    toolbar.grid(row=row_index, column=0, sticky='nsew', columnspan=3)
+
+    row_index += 1
     # 创建可选列表（Combobox）
     options = ["页签名称", "工作簿名称"]
     combo_box = ttk.Combobox(root, values=options, state='readonly', font=FONT_14, width=10)
     combo_box.current(0)
-    combo_box.grid(row=0, column=0)
+    combo_box.grid(row=row_index, column=0)
 
     # 创建文本框
     entry = tk.Entry(root, width=50, font=FONT_14)
-    entry.grid(row=0, column=1)
+    entry.grid(row=row_index, column=1)
     entry.focus_set()  # 默认激活文本框
 
     # 创建一个框架用于包裹按钮，模拟外边距
     button_frame = tk.Frame(root)
-    button_frame.grid(row=0, column=2, padx=5, pady=3)
+    button_frame.grid(row=row_index, column=2, padx=5, pady=3)
 
     # 创建按钮
     button = tk.Button(button_frame, text="模糊搜索", command=search, font=FONT_14, padx=15, pady=5)
     button.pack()
 
+    row_index += 1
     # 创建一个框架用于包裹 Treeview
     tree_frame = tk.Frame(root)
-    tree_frame.grid(row=1, column=0, columnspan=3, padx=5, pady=3)
+    tree_frame.grid(row=row_index, column=0, columnspan=3, padx=5, pady=3)
 
     style = ttk.Style()
     # 修改 Treeview 的字体大小
@@ -308,6 +341,7 @@ if __name__ == '__main__':
         if cache_utils.get_path_data(use_path):
             compute_cache_data()
             refresh_menu_switch_dir()
+            refresh_toolbar()
             root.title(f"Excel 页签搜索工具 - 设置路径：{use_path}")
             search()
         else:
