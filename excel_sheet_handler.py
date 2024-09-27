@@ -26,7 +26,7 @@ class ExcelSheetHandler:
     def close(self):
         if self.workbook is not None:
             self.workbook.close()
-            logging.debug(f"关闭工作簿：{self.file_name}")
+            logging.debug(f"关闭工作簿：{self.file_name}, {self.sheet_name}")
 
     def check_workbook_exists(self):
         try:
