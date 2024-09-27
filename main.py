@@ -285,7 +285,7 @@ if __name__ == '__main__':
         # 弹窗确认是否更新
         usePath = cache_utils.get_config_value("usePath")
         if messagebox.askokcancel("SVN更新确认", f"确定要更新下面的目录吗？\n{usePath}"):
-            subprocess.run(["TortoiseProc.exe", "/command:update", f"/path:{usePath}", "/closeonend:0"])
+            subprocess.Popen(["TortoiseProc.exe", "/command:update", f"/path:{usePath}", "/closeonend:0"])
 
 
     btnSvnUpdate = tk.Button(toolbar2, text="SVN更新", command=run_tortoise_update)
@@ -294,7 +294,7 @@ if __name__ == '__main__':
 
     def run_tortoise_commit():
         usePath = cache_utils.get_config_value("usePath")
-        subprocess.run(["TortoiseProc.exe", "/command:commit", f"/path:{usePath}", "/closeonend:0"], shell=False)
+        subprocess.Popen(["TortoiseProc.exe", "/command:commit", f"/path:{usePath}", "/closeonend:0"], shell=False)
 
 
     btnSvnCommit = tk.Button(toolbar2, text="SVN提交", command=run_tortoise_commit)
@@ -417,7 +417,7 @@ if __name__ == '__main__':
         cache_utils.stop_back_thread()
         # 关闭缓存文件
         cache_utils.close_cache()
-        
+
         root.after(100, root.destroy)
 
     root.protocol("WM_DELETE_WINDOW", on_close)
