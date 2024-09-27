@@ -296,7 +296,7 @@ def worker(in_queue, out_queue):
             # 处理item数组
             excel_sheets = {}
             for excel_name in item:
-                sheet_names = excel_utils.get_excel_sheet_names(excel_name)
+                sheet_names = excel_utils.get_sheet_names_fast(excel_name)
                 excel_sheets[excel_name] = sheet_names
                 # logging.debug(f"线程处理工作簿:{excel_name}，页签数：{sheet_names}")
                 if excel_sheets.__len__() >= 10:

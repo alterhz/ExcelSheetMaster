@@ -445,6 +445,7 @@ class ExcelSheetHandler:
     def save_workbook(self):
         if self.workbook:
             self.workbook.save(self.file_name)
+            logging.debug(f"保存工作簿：{self.file_name}, 页签：{self.sheet_name}")
         else:
             print(f"无法保存工作簿，未找到指定的工作簿：{self.file_name}")
 

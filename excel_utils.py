@@ -2,9 +2,19 @@ import logging
 import os
 
 import openpyxl
+import pandas as pd
 import win32com.client
 
 from os_utils import get_filename_from_path
+
+
+def get_sheet_names_fast(file_path):
+    try:
+        xls = pd.ExcelFile(file_path)
+        sheet_names = xls.sheet_names
+        return sheet_names
+    except Exception as e:
+        return f"发生错误：{e}"
 
 
 def get_excel_sheet_names(file_name):
