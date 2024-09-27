@@ -6,6 +6,8 @@ import time
 import tkinter as tk
 import tkinter.ttk as ttk
 from functools import partial
+from multiprocessing import Process
+from queue import Queue
 from tkinter import filedialog, messagebox
 
 import cache_utils
@@ -229,10 +231,12 @@ def refresh_toolbar():
 
 
 if __name__ == '__main__':
+    init_logging_basic_config()
+
     # Pyinstaller fix
     multiprocessing.freeze_support()
 
-    init_logging_basic_config()
+    cache_utils.start_back_thread()
 
     # 禁用最大化按钮
     root.resizable(False, False)
@@ -376,6 +380,27 @@ if __name__ == '__main__':
 
     root.after_idle(on_window_load)
 
+    running = True
+
+
+    def heartbeat():
+        cache_utils.run_thread()
+        if running:
+            root.after(100, heartbeat)
+
+
+    heartbeat()
+
+
+    def on_close():
+        global running
+        running = False
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", on_close)
+
     root.mainloop()
+    # 停止后台线程
+    cache_utils.stop_back_thread()
     # 关闭缓存文件
     cache_utils.close_cache()

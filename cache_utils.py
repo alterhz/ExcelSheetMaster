@@ -1,9 +1,11 @@
 import logging
 import os
 import time
+from multiprocessing import Queue, Process
 
 import openpyxl
 
+import excel_utils
 from excel_sheet_handler import ExcelSheetHandler
 from excel_utils import get_excel_sheet_names
 from os_utils import get_current_file_names, get_filename_from_path
@@ -15,6 +17,11 @@ ALL_PATH_SHEET_NAME = "allPath"
 g_cache_config: ExcelSheetHandler = None
 g_cache_all_path: ExcelSheetHandler = None
 g_cache_all_sheet: dict = {}
+
+qIn = Queue()
+qOut = Queue()
+process = None
+waiting_run_excels = []
 
 
 def close_cache():
@@ -90,6 +97,8 @@ def get_cache_sheet(sheet_name):
             g_cache_all_sheet[sheet_name].insert_column_header(1, "cs", "String", "name", "文件名", 50)
             g_cache_all_sheet[sheet_name].insert_column_header(2, "cs", "String", "lastModified", "文件修改时间", 50)
             g_cache_all_sheet[sheet_name].insert_column_header(3, "cs", "String", "sheets", "页签列表", 50)
+            g_cache_all_sheet[sheet_name].insert_column_header(4, "cs", "Boolean", "need_update", "需要更新页签列表",
+                                                               20)
             g_cache_all_sheet[sheet_name].save_workbook()
             logging.info(f"创建缓存文件 {CACHE_EXCEL_NAME} 的工作表 {sheet_name}，并插入列头。")
     return g_cache_all_sheet[sheet_name]
@@ -158,11 +167,11 @@ def get_path_sheet_name(path):
 
 
 def compute_cache_data():
-    use_path = get_config_value("usePath")
-
-    use_sheet_name = get_path_sheet_name(use_path)
-
+    # 统计逻辑耗时
+    start_time = time.time()
     # 计算缓存数据
+    use_path = get_config_value("usePath")
+    use_sheet_name = get_path_sheet_name(use_path)
     sheet_handler = get_cache_sheet(use_sheet_name)
     data = sheet_handler.get_all_data()
     # 遍历data转为字典key为文件名,value为行数据
@@ -170,10 +179,7 @@ def compute_cache_data():
     for row in data:
         excel_map[row["name"]] = row
 
-    # 统计逻辑耗时
-    start_time = time.time()
-    # 统计数量
-    count = 0
+    modified_count = 0
     names = get_current_file_names(use_path, ".xlsx")
     for fullname in names:
         name = get_filename_from_path(fullname)
@@ -187,25 +193,113 @@ def compute_cache_data():
                 continue
             else:
                 # 获取页签列表，更新页签列表和修改时间
-                sheet_names = get_excel_sheet_names(fullname)
-                sheet_names = filter_sheet_names(sheet_names)
                 row["lastModified"] = last_modified
-                row["sheets"] = sheet_names
+                row["need_update"] = True
                 sheet_handler.write_row_data(row["row"], row)
+                modified_count += 1
                 logging.info("更新处理文件：" + name)
         else:
-            # 新增数据
-            sheet_names = get_excel_sheet_names(fullname)
-            # 转换sheet_names为字符串,每个sheet_name之间用excel单元格的换行符分隔
-            sheet_names = filter_sheet_names(sheet_names)
-            row = {"cs": "cs", "name": name, "lastModified": last_modified, "sheets": sheet_names}
+            row = {"cs": "cs", "name": name, "lastModified": last_modified, "sheets": "", "need_update": True}
             sheet_handler.write_row_data(sheet_handler.get_max_row_number() + 1, row)
-            logging.info("新增处理文件：" + name)
+            modified_count += 1
+            logging.info("新增待处理文件：" + name)
     # 保存
     sheet_handler.save_workbook()
     # 计算耗时
     t2 = time.time()
-    logging.info(f"计算缓存数据耗时：{t2 - start_time:.2}秒")
+    logging.info(f"计算缓存数据耗时：{t2 - start_time:.2}秒，更新文件数量：{modified_count}")
+
+    use_path = get_config_value("usePath")
+    use_sheet_name = get_path_sheet_name(use_path)
+    # 获取待处理的所有文件列表
+    data = sheet_handler.get_all_data()
+    # 遍历data转为字典key为文件名,value为行数据
+    global waiting_run_excels
+    waiting_run_excels = []
+    for row in data:
+        if row["need_update"]:
+            waiting_run_excels.append(use_path + "/" + row["name"])
+
+
+def run_thread():
+    t1 = time.time()
+    if qIn.empty():
+        # 获取10条数据waiting_run_excels
+        global waiting_run_excels
+        if waiting_run_excels.__len__() > 0:
+            if len(waiting_run_excels) >= 10:
+                qIn.put(waiting_run_excels[:10])
+                del waiting_run_excels[:10]
+                logging.debug(f"请求线程处理一批工作簿，数量：{10}，剩余：{waiting_run_excels.__len__()}")
+            else:
+                qIn.put(waiting_run_excels)
+                logging.debug(f"请求线程处理最后一批工作簿，数量：{waiting_run_excels.__len__()}")
+                waiting_run_excels = []
+
+    if not qOut.empty():
+        excel_sheets = qOut.get()
+        use_path = get_config_value("usePath")
+        use_path_name = get_path_sheet_name(use_path)
+        sheet_handler = get_cache_sheet(use_path_name)
+        data = sheet_handler.get_all_data()
+        # 打印
+        for excel_name, sheet_names in excel_sheets.items():
+            # 获取路径，不包含文件名
+            path = os.path.dirname(excel_name)
+            if use_path == path:
+                # logging.info(f"{path}文件：{excel_name}，页签数：{sheet_names}")
+                for row in data:
+                    if row["name"] == get_filename_from_path(excel_name):
+                        row["sheets"] = filter_sheet_names(sheet_names)
+                        row["need_update"] = False
+                        sheet_handler.write_row_data(row["row"], row)
+                        # logging.info(f"更新页签列表：{excel_name}，页签数：{sheet_names}")
+                        break
+            else:
+                logging.warning(f"路径不匹配：{path}，配置路径：{use_path}")
+        # 保存
+        sheet_handler.save_workbook()
+        t2 = time.time()
+        logging.info(f"处理缓存数据耗时：{t2 - t1:.2}秒")
+
+
+def start_back_thread():
+    global process
+    process = Process(target=worker, args=(qIn, qOut))
+    process.start()
+
+
+def stop_back_thread():
+    global process, qIn
+    qIn.put(None)
+    if process:
+        process.join()
+        logging.info("线程已停止。")
+
+
+def worker(in_queue, out_queue):
+    logging.basicConfig(level=logging.DEBUG)
+    while True:
+        try:
+            item = in_queue.get()
+            if item is None:
+                logging.debug("线程退出")
+                break
+            # 处理item数组
+            excel_sheets = {}
+            for excel_name in item:
+                sheet_names = excel_utils.get_excel_sheet_names(excel_name)
+                excel_sheets[excel_name] = sheet_names
+                # logging.debug(f"线程处理工作簿:{excel_name}，页签数：{sheet_names}")
+                if excel_sheets.__len__() >= 10:
+                    out_queue.put(excel_sheets)
+                    # logging.debug(f"线程处理一批工作簿，数量：{excel_sheets.__len__()}")
+                    excel_sheets = {}
+            if excel_sheets.__len__() > 0:
+                out_queue.put(excel_sheets)
+                # logging.debug(f"线程处理一批工作簿，数量：{excel_sheets.__len__()}")
+        except Exception as e:
+            logging.error(f"线程处理异常：{e}")
 
 
 def get_all_sheet_names():
