@@ -310,7 +310,7 @@ if __name__ == '__main__':
     combo_box.grid(row=row_index, column=0)
 
     # 创建文本框
-    entry = tk.Entry(root, width=65, font=FONT_BOLD_12)
+    entry = tk.Entry(root, width=80, font=FONT_BOLD_12)
     entry.grid(row=row_index, column=1)
     entry.focus_set()  # 默认激活文本框
 
@@ -319,7 +319,7 @@ if __name__ == '__main__':
     button_frame.grid(row=row_index, column=2, padx=5, pady=3)
 
     # 创建按钮
-    button = tk.Button(button_frame, text="模糊搜索", command=search, font=FONT_BOLD_12, padx=15, pady=5)
+    button = tk.Button(button_frame, text="模糊搜索", command=search, font=FONT_BOLD_12, padx=0, pady=5, width=15)
     button.pack()
 
     row_index += 1
@@ -337,7 +337,7 @@ if __name__ == '__main__':
     tree.heading('Sheet Name', text='页签名称')
     tree.heading('Excel Name', text='工作簿名称')
     tree.column('Sheet Name', width=500, anchor='center')
-    tree.column('Excel Name', width=400, anchor='center')
+    tree.column('Excel Name', width=600, anchor='center')
     # 设置 Treeview 的高度为 10 行（可根据实际需求调整）
     tree.configure(height=30)
     # 创建垂直滚动条
@@ -421,6 +421,23 @@ if __name__ == '__main__':
 
     root.protocol("WM_DELETE_WINDOW", on_close)
 
+
+    def center_window(root):
+        # 获取屏幕宽度和高度
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        # 确保窗口布局已经完成，再获取窗口的实际宽度和高度
+        root.update_idletasks()
+        # 获取窗口宽度和高度
+        window_width = root.winfo_width()
+        window_height = root.winfo_height()
+        # 计算窗口左上角的坐标
+        x = (screen_width - window_width) / 2
+        y = (screen_height - window_height) / 2
+        logging.debug(f"屏幕宽度：{screen_width}，屏幕高度：{screen_height}，窗口宽度：{window_width}，窗口高度：{window_height}")
+        root.geometry('+%d+%d' % (x, y))
+
+    center_window(root)
     root.mainloop()
 
 
