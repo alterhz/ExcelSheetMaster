@@ -9,6 +9,8 @@ import tkinter.ttk as ttk
 from functools import partial
 from tkinter import filedialog, messagebox
 
+import psutil as psutil
+
 import cache_utils
 from cache_utils import compute_cache_data, get_all_sheet_names
 from excel_utils import open_excel_sheet
@@ -233,10 +235,24 @@ def refresh_toolbar():
 
 
 if __name__ == '__main__':
-    init_logging_basic_config()
-
     # Pyinstaller fix
     multiprocessing.freeze_support()
+
+    init_logging_basic_config()
+
+    def close_same_exe():
+        current_script = os.path.basename(__file__)
+        this_exe_name = os.path.splitext(current_script)[0] + '.exe'
+        for proc in psutil.process_iter():
+            try:
+                if proc.name() == this_exe_name and proc.pid != os.getpid():
+                    proc.kill()
+                    logging.info(f"关闭其他同名应用程序：{this_exe_name}")
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
+
+
+    close_same_exe()
 
     cache_utils.start_back_thread()
 
@@ -300,9 +316,11 @@ if __name__ == '__main__':
     btnSvnCommit = tk.Button(toolbar2, text="SVN提交", command=run_tortoise_commit)
     btnSvnCommit.grid(row=row_index, column=2, padx=2, pady=2)
 
+
     def open_dir():
         usePath = cache_utils.get_config_value("usePath")
         os.startfile(usePath)
+
 
     btnSvnCommit = tk.Button(toolbar2, text="打开目录", command=open_dir)
     btnSvnCommit.grid(row=row_index, column=3, padx=10, pady=2)
@@ -398,6 +416,7 @@ if __name__ == '__main__':
 
     thread_idle = False
 
+
     def heartbeat():
         cache_utils.run_thread()
         if cache_utils.is_all_empty():
@@ -427,6 +446,7 @@ if __name__ == '__main__':
 
         root.after(100, root.destroy)
 
+
     root.protocol("WM_DELETE_WINDOW", on_close)
 
 
@@ -442,10 +462,10 @@ if __name__ == '__main__':
         # 计算窗口左上角的坐标
         x = (screen_width - window_width) / 2
         y = (screen_height - window_height) / 2
-        logging.debug(f"屏幕宽度：{screen_width}，屏幕高度：{screen_height}，窗口宽度：{window_width}，窗口高度：{window_height}")
+        logging.debug(
+            f"屏幕宽度：{screen_width}，屏幕高度：{screen_height}，窗口宽度：{window_width}，窗口高度：{window_height}")
         root.geometry('+%d+%d' % (x, y))
+
 
     center_window(root)
     root.mainloop()
-
-
