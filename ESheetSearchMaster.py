@@ -2,6 +2,7 @@ import logging
 import multiprocessing
 import os.path
 import subprocess
+import sys
 import time
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -299,7 +300,14 @@ if __name__ == '__main__':
     btnSvnCommit = tk.Button(toolbar2, text="SVN提交", command=run_tortoise_commit)
     btnSvnCommit.grid(row=row_index, column=2, padx=2, pady=2)
 
-    # 初始显示工具栏
+    def open_dir():
+        usePath = cache_utils.get_config_value("usePath")
+        os.startfile(usePath)
+
+    btnSvnCommit = tk.Button(toolbar2, text="打开目录", command=open_dir)
+    btnSvnCommit.grid(row=row_index, column=3, padx=10, pady=2)
+
+    # 初始SVN工具栏
     toolbar2.grid(row=row_index, column=0, sticky='nsew', columnspan=3)
 
     row_index += 1
