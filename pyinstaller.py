@@ -5,4 +5,6 @@ PyInstaller.__main__.run([
     '--noconfirm',
     '--onefile',
     '--windowed',  # 或者使用 '--noconsole'
+    f'--name=SheetSearchMaster',
+    f'--icon=sheet_master.ico'
 ])
