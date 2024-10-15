@@ -175,6 +175,14 @@ def change_path_window():
     confirm_button.grid(row=4, column=0, columnspan=2)
 
 
+def get_second_part(s: str):
+    parts = s.split('|')
+    if len(parts) > 1:
+        return parts[1]
+    else:
+        return ""
+
+
 def search():
     global tree, entry, combo_box
     tree.delete(*tree.get_children())
@@ -193,8 +201,28 @@ def search():
             # 工作簿搜索
             if search_text in excel_name.lower():
                 values_to_insert.append((sheet_name, excel_name))
-    for values in values_to_insert:
-        tree.insert('', tk.END, values=values)
+
+    # 按照 sheet_name 进行排序，并将空字符串排在最后面
+    def custom_sort_key(full_sheet_name):
+        second_part = get_second_part(full_sheet_name[0])
+        if second_part == "":
+            return 1, full_sheet_name[0]
+        else:
+            return 0, second_part
+
+    values_to_insert.sort(key=custom_sort_key)
+    first_match_index = None
+    for index, values in enumerate(values_to_insert):
+        item = tree.insert('', tk.END, values=values)
+        if len(search_text) > 0 and get_second_part(values[0]).lower() == search_text.lower():
+            # 记录第一个匹配项的索引
+            first_match_index = item
+
+    if first_match_index is not None:
+        # 选中第一个匹配项
+        tree.selection_set(first_match_index)
+        tree.see(first_match_index)
+
     # 更新状态栏，显示搜索结果数量
     status_bar.config(text=f"搜索到 {len(values_to_insert)} 条结果。")
 
@@ -234,11 +262,64 @@ def refresh_toolbar():
         column_index += 1
 
 
+def add_svn_toolbar():
+    # 创建工具栏框架
+    toolbar2 = tk.Frame(root, bd=1, relief='raised')
+    column_num = 0
+
+    def run_tortoise_update():
+        # 弹窗确认是否更新
+        usePath = cache_utils.get_config_value("usePath")
+        if messagebox.askokcancel("SVN更新确认", f"确定要更新下面的目录吗？\n{usePath}"):
+            subprocess.Popen(["TortoiseProc.exe", "/command:update", f"/path:{usePath}", "/closeonend:0"])
+
+    btnSvnUpdate = tk.Button(toolbar2, text="SVN更新", command=run_tortoise_update)
+    column_num += 1
+    btnSvnUpdate.grid(row=row_index, column=column_num, padx=2, pady=2)
+
+    # svn cleanup
+    def run_tortoise_cleanup():
+        usePath = cache_utils.get_config_value("usePath")
+        subprocess.Popen(["TortoiseProc.exe", "/command:cleanup", f"/path:{usePath}", "/closeonend:0"], shell=False)
+
+    btnSvnCleanup = tk.Button(toolbar2, text="SVN清理", command=run_tortoise_cleanup)
+    column_num += 1
+    btnSvnCleanup.grid(row=row_index, column=column_num, padx=2, pady=2)
+
+    # svn revert
+    def run_tortoise_revert():
+        usePath = cache_utils.get_config_value("usePath")
+        subprocess.Popen(["TortoiseProc.exe", "/command:revert", f"/path:{usePath}", "/closeonend:0"], shell=False)
+
+    btnSvnRevert = tk.Button(toolbar2, text="SVN还原", command=run_tortoise_revert)
+    column_num += 1
+    btnSvnRevert.grid(row=row_index, column=column_num, padx=2, pady=2)
+
+    def run_tortoise_commit():
+        usePath = cache_utils.get_config_value("usePath")
+        subprocess.Popen(["TortoiseProc.exe", "/command:commit", f"/path:{usePath}", "/closeonend:0"], shell=False)
+
+    btnSvnCommit = tk.Button(toolbar2, text="SVN提交", command=run_tortoise_commit)
+    column_num += 1
+    btnSvnCommit.grid(row=row_index, column=column_num, padx=2, pady=2)
+
+    def open_dir():
+        usePath = cache_utils.get_config_value("usePath")
+        os.startfile(usePath)
+
+    btnSvnCommit = tk.Button(toolbar2, text="打开目录", command=open_dir)
+    column_num += 1
+    btnSvnCommit.grid(row=row_index, column=column_num, padx=10, pady=2)
+    # 初始SVN工具栏
+    toolbar2.grid(row=row_index, column=0, sticky='nsew', columnspan=3)
+
+
 if __name__ == '__main__':
     # Pyinstaller fix
     multiprocessing.freeze_support()
 
     init_logging_basic_config()
+
 
     def close_same_exe():
         current_script = os.path.basename(__file__)
@@ -285,48 +366,11 @@ if __name__ == '__main__':
     # 创建工具栏框架
     toolbar = tk.Frame(root, bd=1, relief='raised')
 
-    # 配置网格布局参数
-    root.grid_rowconfigure(0, weight=0)
-    root.grid_columnconfigure(0, weight=1)
-
     # 初始显示工具栏
     toolbar.grid(row=row_index, column=0, sticky='nsew', columnspan=3)
 
     row_index += 1
-    # 创建工具栏框架
-    toolbar2 = tk.Frame(root, bd=1, relief='raised')
-
-
-    def run_tortoise_update():
-        # 弹窗确认是否更新
-        usePath = cache_utils.get_config_value("usePath")
-        if messagebox.askokcancel("SVN更新确认", f"确定要更新下面的目录吗？\n{usePath}"):
-            subprocess.Popen(["TortoiseProc.exe", "/command:update", f"/path:{usePath}", "/closeonend:0"])
-
-
-    btnSvnUpdate = tk.Button(toolbar2, text="SVN更新", command=run_tortoise_update)
-    btnSvnUpdate.grid(row=row_index, column=1, padx=2, pady=2)
-
-
-    def run_tortoise_commit():
-        usePath = cache_utils.get_config_value("usePath")
-        subprocess.Popen(["TortoiseProc.exe", "/command:commit", f"/path:{usePath}", "/closeonend:0"], shell=False)
-
-
-    btnSvnCommit = tk.Button(toolbar2, text="SVN提交", command=run_tortoise_commit)
-    btnSvnCommit.grid(row=row_index, column=2, padx=2, pady=2)
-
-
-    def open_dir():
-        usePath = cache_utils.get_config_value("usePath")
-        os.startfile(usePath)
-
-
-    btnSvnCommit = tk.Button(toolbar2, text="打开目录", command=open_dir)
-    btnSvnCommit.grid(row=row_index, column=3, padx=10, pady=2)
-
-    # 初始SVN工具栏
-    toolbar2.grid(row=row_index, column=0, sticky='nsew', columnspan=3)
+    add_svn_toolbar()
 
     row_index += 1
     # 创建可选列表（Combobox）

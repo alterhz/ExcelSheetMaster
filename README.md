@@ -15,3 +15,9 @@ pip freeze > requirements.txt
 ```bat
 pip install -r requirements.txt
 ```
+
+
+# 更新
+## 2024-10-15
+- SVN工具栏：添加clean和revert
+- 搜索排序：添加按照文件名排序，搜索与目标一致，直接选中
