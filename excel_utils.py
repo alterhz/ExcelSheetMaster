@@ -12,6 +12,7 @@ def get_sheet_names_fast(file_path):
     try:
         xls = pd.ExcelFile(file_path)
         sheet_names = xls.sheet_names
+        xls.close()
         return sheet_names
     except Exception as e:
         return f"发生错误：{e}"
