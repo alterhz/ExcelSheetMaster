@@ -399,6 +399,28 @@ class ExcelSheetHandler:
                     sheet.cell(row=row_number, column=column_index).value = value
                 i += 2
 
+    def delete_range_rows(self, start_row, end_row=None):
+        sheet = self.create_sheet()
+        if sheet:
+            if end_row is None:
+                sheet.delete_rows(start_row)
+            else:
+                for row in range(end_row, start_row - 1, -1):
+                    sheet.delete_rows(row)
+        return None
+
+    def delete_rows(self, row_numbers: list):
+        """
+        删除行,按行号从大到小删除
+        """
+        sheet = self.create_sheet()
+        if sheet:
+            sorted_rows = sorted(row_numbers, reverse=True)
+            for row_number in sorted_rows:
+                if 1 <= row_number <= sheet.max_row:
+                    sheet.delete_rows(row_number)
+        return None
+
     def get_column_index_by_name(self, column_name):
         sheet = self.create_sheet()
         if sheet:
@@ -456,6 +478,14 @@ class ExcelSheetHandler:
             logging.debug(f"保存工作簿：{self.file_name}, 页签：{self.sheet_name}")
         else:
             print(f"无法保存工作簿，未找到指定的工作簿：{self.file_name}")
+
+    def remove_sheet(self):
+        if self.workbook:
+            self.workbook.remove(self.worksheet)
+            self.save_workbook()
+            logging.debug(f"删除工作簿：{self.file_name}, 页签：{self.sheet_name}")
+        else:
+            print(f"无法删除工作簿，未找到指定的工作簿：{self.file_name}")
 
 
 if __name__ == '__main__':

@@ -6,9 +6,9 @@ from multiprocessing import Queue, Process
 import openpyxl
 
 import excel_utils
+import os_utils
 from excel_sheet_handler import ExcelSheetHandler
 from excel_utils import get_excel_sheet_names
-from os_utils import get_current_file_names, get_filename_from_path
 
 CACHE_EXCEL_NAME = "cache.xlsx"
 CONFIG_SHEET_NAME = "config"
@@ -99,6 +99,13 @@ def get_cache_sheet(sheet_name):
     return g_cache_all_sheet[sheet_name]
 
 
+def remove_cache_sheet(sheet_name):
+    if sheet_name in g_cache_all_sheet:
+        g_cache_all_sheet[sheet_name].remove_sheet()
+        del g_cache_all_sheet[sheet_name]
+        logging.info(f"删除缓存文件 {CACHE_EXCEL_NAME} 的工作表 {sheet_name}。")
+
+
 def set_config_value(key, value):
     config_cache = get_config_cache_sheet()
     data = config_cache.get_all_data()
@@ -138,6 +145,17 @@ def set_path_data(path, sheet_name, include_subdir, desc):
     all_path_sheet.save_workbook()
 
 
+def del_path_data(path: str):
+    """删除指定路径的缓存数据"""
+    all_path_sheet = get_all_path_cache_sheet()
+    data = all_path_sheet.get_all_data()
+    for row in data:
+        if row["path"] == path:
+            all_path_sheet.delete_rows([row["row"]])
+            all_path_sheet.save_workbook()
+            return
+
+
 def get_path_data(path):
     all_path_sheet = get_all_path_cache_sheet()
     data = all_path_sheet.get_all_data()
@@ -150,6 +168,14 @@ def get_path_data(path):
 def get_all_path_data():
     all_path_sheet = get_all_path_cache_sheet()
     return all_path_sheet.get_all_data()
+
+
+def get_first_path():
+    all_path_sheet = get_all_path_cache_sheet()
+    data = all_path_sheet.get_all_data()
+    if len(data) > 0:
+        return data[0]["path"]
+    return None
 
 
 def get_path_sheet_name(path):
@@ -173,15 +199,17 @@ def compute_cache_data():
         excel_map[row["name"]] = row
 
     modified_count = 0
-    names = get_current_file_names(use_path, ".xlsx")
+    names = os_utils.get_current_file_names(use_path, ".xlsx")
     for fullname in names:
-        name = get_filename_from_path(fullname)
+        name = os_utils.get_filename_from_path(fullname)
         last_modified = os.path.getmtime(fullname)
         # 转为时间格式
         last_modified = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_modified))
         # data中获取对应的数据
         if name in excel_map:
             row = excel_map[name]
+            if row is None:
+                continue
             if row["lastModified"] == last_modified:
                 continue
             else:
@@ -196,6 +224,22 @@ def compute_cache_data():
             sheet_handler.write_row_data(sheet_handler.get_max_row_number() + 1, row)
             modified_count += 1
             logging.info("新增待处理文件：" + name)
+
+    # 转为names未only_names，去掉路径，只要文件名称
+    only_names = []
+    for name in names:
+        only_names.append(os_utils.get_filename_from_path(name))
+
+    # 不存在的文件，要删除数据。记录行号到数组中
+    delete_rows = []
+    for row in data:
+        if row["name"] not in only_names:
+            delete_rows.append(row["row"])
+            logging.info("删除待处理文件：" + row["name"])
+
+    # 删除数据
+    sheet_handler.delete_rows(delete_rows)
+
     # 保存
     sheet_handler.save_workbook()
 
@@ -250,7 +294,7 @@ def run_thread():
             if use_path == path:
                 # logging.info(f"{path}文件：{excel_name}，页签数：{sheet_names}")
                 for row in data:
-                    if row["name"] == get_filename_from_path(excel_name):
+                    if row["name"] == os_utils.get_filename_from_path(excel_name):
                         row["sheets"] = filter_sheet_names(sheet_names)
                         row["need_update"] = False
                         sheet_handler.write_row_data(row["row"], row)

@@ -58,23 +58,14 @@ def open_path_window():
     name_entry = tk.Entry(path_window, width=50, font=FONT_12)
     name_entry.grid(row=1, column=1)
 
-    # 创建描述输入框及标签
-    description_label = tk.Label(path_window, text="描述：", font=FONT_12)
-    description_label.grid(row=2, column=0)
-    description_entry = tk.Text(path_window, height=5, width=50, font=FONT_12)
-    description_entry.grid(row=2, column=1)
-
-    # 创建是否包含子目录的复选框及标签
-    include_subdirs_var = tk.BooleanVar()
-    include_subdirs_checkbox = tk.Checkbutton(path_window, text="包含子目录", variable=include_subdirs_var,
-                                              font=FONT_12)
-    include_subdirs_checkbox.grid(row=3, column=0, columnspan=2)
-
     def save_path():
         new_path = path_entry.get()
         sheet_name = name_entry.get()
-        description = description_entry.get("1.0", tk.END).strip()
-        include_subdirs = include_subdirs_var.get()
+        # sheet_name 不能为空
+        if not sheet_name or sheet_name.isspace():
+            # 弹窗提示
+            messagebox.showerror("警告", "名称不能为空")
+            return
         # 判断路径是否存在
         if not os.path.exists(new_path):
             # 弹窗提示
@@ -89,13 +80,13 @@ def open_path_window():
             messagebox.showerror("警告", "页签名称已存在")
             return
         cache_utils.set_config_value("usePath", new_path)
-        cache_utils.set_path_data(new_path, sheet_name, include_subdirs, description)
+        cache_utils.set_path_data(new_path, sheet_name, False, "")
         refresh_switch_dir()
-        logging.info(f"更改路径为：{new_path}，名称：{sheet_name}，描述：{description}，是否包含子目录：{include_subdirs}")
+        logging.info(f"更改路径为：{new_path}，名称：{sheet_name}")
         path_window.destroy()
 
-    save_button = tk.Button(path_window, text="保存", command=save_path, font=FONT_12)
-    save_button.grid(row=4, column=0, columnspan=2)
+    save_button = tk.Button(path_window, text="添加目录", command=save_path, font=FONT_12)
+    save_button.grid(row=4, column=0, columnspan=2, pady=5)
 
 
 def refresh_switch_dir():
@@ -128,13 +119,9 @@ def change_path_window():
         selected_option = cb_path.get()
         logging.info(f"选择了：{selected_option}")
         path_data = cache_utils.get_path_data(selected_option)
-        entry_sheet_name.delete(0, tk.END)
-        entry_sheet_name.insert(0, path_data["sheet_name"])
-        # 设置是否包含子目录的复选框
-        var_ckb_include_sub_dirs.set(path_data["includeSubDir"])
-        # 设置描述文本框
-        txt_desc.delete("1.0", tk.END)
-        txt_desc.insert("1.0", path_data["desc"])
+        if path_data:
+            entry_sheet_name.delete(0, tk.END)
+            entry_sheet_name.insert(0, path_data["sheet_name"])
 
     cb_path.bind("<<ComboboxSelected>>", on_combobox_select)
 
@@ -143,21 +130,6 @@ def change_path_window():
     text1_label.grid(row=1, column=0)
     entry_sheet_name = tk.Entry(new_window, width=50, font=FONT_12)
     entry_sheet_name.grid(row=1, column=1)
-
-    # 创建第二个勾选框及标签
-    text2_label = tk.Label(new_window, text="是否包含子目录：", font=FONT_12)
-    text2_label.grid(row=2, column=0)
-    var_ckb_include_sub_dirs = tk.BooleanVar()
-    text2_checkbox = tk.Checkbutton(new_window, variable=var_ckb_include_sub_dirs, font=FONT_12)
-    # text2_checkbox禁用编辑
-    text2_checkbox["state"] = "disabled"
-    text2_checkbox.grid(row=2, column=1)
-
-    # 创建第三个文本框及标签
-    text3_label = tk.Label(new_window, text="描述：", font=FONT_12)
-    text3_label.grid(row=3, column=0)
-    txt_desc = tk.Text(new_window, height=5, width=50, font=FONT_12)
-    txt_desc.grid(row=3, column=1)
 
     # 获取当前路径
     use_path = cache_utils.get_config_value("usePath")
@@ -171,8 +143,28 @@ def change_path_window():
         refresh_switch_dir()
         new_window.destroy()
 
-    confirm_button = tk.Button(new_window, text="确认选择", command=confirm_selection, font=FONT_12)
-    confirm_button.grid(row=4, column=0, columnspan=2)
+    def delete_selection():
+        # 先删除目录，然后获取第一个路径
+        selected_path = cb_path.get()
+        # 删除页签
+        sheet_name = cache_utils.get_path_sheet_name(selected_path)
+        cache_utils.remove_cache_sheet(sheet_name)
+        # 获取sheet_name
+        cache_utils.del_path_data(selected_path)
+        first_path = cache_utils.get_first_path()
+        if first_path is None:
+            cache_utils.set_config_value("usePath", "")
+            open_path_window()
+        else:
+            cache_utils.set_config_value("usePath", first_path)
+            refresh_switch_dir()
+
+        new_window.destroy()
+
+    confirm_button = tk.Button(new_window, text="切换目录", command=confirm_selection, font=FONT_12)
+    confirm_button.grid(row=4, column=0, pady=5)
+    delete_button = tk.Button(new_window, text="删除目录", command=delete_selection, font=FONT_12)
+    delete_button.grid(row=4, column=1, pady=5)
 
 
 def get_second_part(s: str):
@@ -451,7 +443,13 @@ if __name__ == '__main__':
         if cache_utils.get_path_data(use_path):
             refresh_switch_dir()
         else:
-            open_path_window()
+            # 获取第一个路径
+            first_path = cache_utils.get_first_path()
+            if first_path:
+                cache_utils.set_config_value("usePath", first_path)
+                refresh_switch_dir()
+            else:
+                open_path_window()
 
 
     root.after_idle(on_window_load)
@@ -488,7 +486,8 @@ if __name__ == '__main__':
         # 关闭缓存文件
         cache_utils.close_cache()
 
-        root.after(100, root.destroy)
+        root.destroy()
+        # root.after(100, root.destroy)
 
 
     root.protocol("WM_DELETE_WINDOW", on_close)

@@ -44,6 +44,7 @@ def get_current_file_names(directory, extension):
 
     return file_names
 
+
 # 获取目录名字
 def get_child_directory_names(directory):
     """
@@ -82,6 +83,7 @@ def read_file_to_list():
         return lines
     return lines
 
+
 def get_filename_from_path(file_path):
     """
     此函数接收一个完整的文件路径，返回其中的文件名。
@@ -92,6 +94,7 @@ def get_filename_from_path(file_path):
     """
     import os
     return os.path.basename(file_path)
+
 
 if __name__ == "__main__":
     # 测试函数
