@@ -20,6 +20,8 @@ FONT_12 = ("微软雅黑", 12)
 FONT_BOLD_12 = ("微软雅黑", 12, "bold")
 TITLE = "Excel页签搜索大师"
 
+last_search_text = ""
+
 root = tk.Tk()
 root.title(TITLE)
 
@@ -176,9 +178,9 @@ def get_second_part(s: str):
 
 
 def search():
-    global tree, entry, combo_box
+    global tree, entry_search, combo_box
     tree.delete(*tree.get_children())
-    search_text = entry.get().strip().lower()
+    search_text = entry_search.get().strip().lower()
     sheet_names = get_all_sheet_names()
     search_type_index = combo_box.current()
     values_to_insert = []
@@ -306,6 +308,41 @@ def add_svn_toolbar():
     toolbar2.grid(row=row_index, column=0, sticky='nsew', columnspan=3)
 
 
+def open_selected_excel():
+    item = tree.selection()
+    if item:
+        values = tree.item(item, "values")
+        sheet_name = values[0]
+        use_path = cache_utils.get_config_value("usePath")
+        excel_name = use_path + "/" + values[1]
+        open_excel_sheet(excel_name, sheet_name)
+        print(f"打开页签 {sheet_name}，工作簿 {excel_name}。")
+
+
+def on_up():
+    selected_item = tree.selection()
+    if selected_item:
+        current_index = tree.index(selected_item[0])
+        if current_index > 0:
+            new_index = current_index - 1
+            tree.selection_set(tree.get_children()[new_index])
+            tree.see(tree.get_children()[new_index])
+
+
+def on_down():
+    selected_item = tree.selection()
+    if selected_item:
+        current_index = tree.index(selected_item[0])
+        if current_index < len(tree.get_children()) - 1:
+            new_index = current_index + 1
+            tree.selection_set(tree.get_children()[new_index])
+            tree.see(tree.get_children()[new_index])
+    else:
+        if tree.get_children():
+            tree.selection_set(tree.get_children()[0])
+            tree.see(tree.get_children()[0])
+
+
 if __name__ == '__main__':
     # Pyinstaller fix
     multiprocessing.freeze_support()
@@ -372,9 +409,9 @@ if __name__ == '__main__':
     combo_box.grid(row=row_index, column=0)
 
     # 创建文本框
-    entry = tk.Entry(root, width=80, font=FONT_BOLD_12)
-    entry.grid(row=row_index, column=1)
-    entry.focus_set()  # 默认激活文本框
+    entry_search = tk.Entry(root, width=80, font=FONT_BOLD_12)
+    entry_search.grid(row=row_index, column=1)
+    entry_search.focus_set()  # 默认激活文本框
 
     # 创建一个框架用于包裹按钮，模拟外边距
     button_frame = tk.Frame(root)
@@ -416,25 +453,50 @@ if __name__ == '__main__':
 
 
     def on_double_click(event):
-        item = tree.selection()
-        if item:
-            values = tree.item(item, "values")
-            sheet_name = values[0]
-            use_path = cache_utils.get_config_value("usePath")
-            excel_name = use_path + "/" + values[1]
-            open_excel_sheet(excel_name, sheet_name)
-            print(f"打开页签 {sheet_name}，工作簿 {excel_name}。")
+        open_selected_excel()
 
 
     tree.bind("<Double-1>", on_double_click)
 
+    def on_enter(event):
+        open_selected_excel()
+
+    # 绑定回车事件
+    tree.bind("<Return>", on_enter)
 
     def on_enter(event):
-        search()
+        global last_search_text
+        if last_search_text == entry_search.get().strip().lower():
+            open_selected_excel()
+        else:
+            last_search_text = entry_search.get().strip().lower()
+            search()
         return 'break'  # 阻止回车键的默认换行操作
 
+    entry_search.bind('<Return>', on_enter)
 
-    entry.bind('<Return>', on_enter)
+    def on_up_key(event):
+        on_up()
+
+
+    def on_down_key(event):
+        on_down()
+
+
+    entry_search.bind("<Up>", on_up_key)
+    entry_search.bind("<Down>", on_down_key)
+
+
+    def on_up_key(event):
+        on_up()
+
+
+    def on_down_key(event):
+        on_down()
+
+
+    tree.bind("<Up>", on_up_key)
+    tree.bind("<Down>", on_down_key)
 
 
     def on_window_load():
