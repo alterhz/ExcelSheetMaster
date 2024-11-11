@@ -343,6 +343,10 @@ def on_down():
             tree.see(tree.get_children()[0])
 
 
+def about():
+    messagebox.showinfo("关于", "Excel页签搜索大师\n版本：1.0\n作者：Ziegler\n邮箱：550360139@qq.com\n")
+
+
 if __name__ == '__main__':
     # Pyinstaller fix
     multiprocessing.freeze_support()
@@ -385,6 +389,11 @@ if __name__ == '__main__':
     # # 添加动态菜单项
     switch_menu = tk.Menu(menu_bar, tearoff=0)
     menu_bar.add_cascade(label="切换目录", menu=switch_menu)
+
+    # # 添加动态菜单项
+    about_menu = tk.Menu(menu_bar, tearoff=0)
+    menu_bar.add_cascade(label="关于", menu=about_menu)
+    about_menu.add_command(label="关于程序", command=about)
 
     # 将菜单栏添加到窗口
     root.config(menu=menu_bar)
