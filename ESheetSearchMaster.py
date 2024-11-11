@@ -498,6 +498,32 @@ if __name__ == '__main__':
     tree.bind("<Up>", on_up_key)
     tree.bind("<Down>", on_down_key)
 
+    # 创建右键菜单
+    right_click_menu = tk.Menu(root, tearoff=0)
+    right_click_menu.add_command(label="页签简称，“|”后面的值", command=lambda: copy_selected_item_text(0, True))
+    right_click_menu.add_command(label="复制页签名称", command=lambda: copy_selected_item_text(0))
+    right_click_menu.add_command(label="复制文件名称", command=lambda: copy_selected_item_text(1))
+
+
+    def copy_selected_item_text(index, simple=False):
+        selected_item = tree.selection()
+        if selected_item:
+            item_text = tree.item(selected_item[0], 'values')[index]
+            if simple:
+                split = item_text.split("|")
+                if len(split) > 1:
+                    item_text = split[1]
+            root.clipboard_clear()
+            root.clipboard_append(item_text)
+            messagebox.showinfo("提示", f"已复制：{item_text}")
+
+
+    def on_right_click(event):
+        right_click_menu.post(event.x_root, event.y_root)
+
+
+    tree.bind("<Button-3>", on_right_click)
+
 
     def on_window_load():
         # 先加载窗口，再初始化数据
