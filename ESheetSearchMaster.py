@@ -1,15 +1,21 @@
+import datetime
 import logging
 import multiprocessing
 import os.path
+import queue
+import socket
 import subprocess
-import sys
+import threading
 import time
 import tkinter as tk
 import tkinter.ttk as ttk
+import uuid
 from functools import partial
 from tkinter import filedialog, messagebox
+from typing import Dict, Any
 
 import psutil as psutil
+import requests
 
 import cache_utils
 from cache_utils import compute_cache_data, get_all_sheet_names
@@ -21,6 +27,12 @@ FONT_BOLD_12 = ("微软雅黑", 12, "bold")
 TITLE = "Excel页签搜索大师"
 
 last_search_text = ""
+
+log_server_ip = "http://10.4.4.123:8014"
+# 创建同步队列
+log_queue = queue.Queue()
+log_run = True
+local_ip = ""
 
 root = tk.Tk()
 root.title(TITLE)
@@ -85,6 +97,7 @@ def open_path_window():
         cache_utils.set_path_data(new_path, sheet_name, False, "")
         refresh_switch_dir()
         logging.info(f"更改路径为：{new_path}，名称：{sheet_name}")
+        remote_log("add_new_path", {"new_path": new_path})
         path_window.destroy()
 
     save_button = tk.Button(path_window, text="添加目录", command=save_path, font=FONT_12)
@@ -219,11 +232,14 @@ def search():
 
     # 更新状态栏，显示搜索结果数量
     status_bar.config(text=f"搜索到 {len(values_to_insert)} 条结果。")
+    remote_log("search", {"search_text": search_text,
+                          "search_type_index": "页签搜索" if search_type_index == 0 else "工作簿搜索"})
 
 
 def change_use_path(path):
     cache_utils.set_config_value("usePath", path)
     refresh_switch_dir()
+    remote_log("change_dir", {"path": path})
 
 
 def refresh_menu_switch_dir():
@@ -317,6 +333,7 @@ def open_selected_excel():
         excel_name = use_path + "/" + values[1]
         open_excel_sheet(excel_name, sheet_name)
         print(f"打开页签 {sheet_name}，工作簿 {excel_name}。")
+        remote_log("open_excel", {"sheet_name": sheet_name, "excel_name": excel_name})
 
 
 def on_up():
@@ -347,11 +364,67 @@ def about():
     messagebox.showinfo("关于", "Excel页签搜索大师\n版本：1.0\n作者：Ziegler\n邮箱：550360139@qq.com\n")
 
 
+def get_external_ip():
+    try:
+        response = requests.get(log_server_ip + '/get_ip')
+        if response.status_code == 200:
+            ip_data = response.json()  # 将返回的文本解析为JSON格式，因为之前返回的是字典形式 {"client_ip": "具体IP"}
+            return ip_data.get('ip')
+        else:
+            return ""
+    except requests.RequestException:
+        return ""
+
+
+def async_log(log_data: Dict[str, Any]) -> Dict[str, Any]:
+    logging.info(f"remote log:{log_data}")
+    url = log_server_ip + "/log"
+    try:
+        response = requests.post(url, json=log_data)
+        logging.info(f"日志 {log_data} 发送成功：{response.json()}")
+        return response.json()
+    except Exception as e:
+        logging.error(f"Error calling log function: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+def log_thread():
+    while log_run:
+        log_data = log_queue.get(block=True)
+        async_log(log_data)
+        log_queue.task_done()
+    logging.info(f"remote log 线程已停止")
+
+
+def remote_log(log_type, log_data):
+    # 缓存获取本机识别码，没有则创建。识别为32位字符串
+    local_uuid = cache_utils.get_config_value("local_uuid")
+    if not local_uuid:
+        local_uuid = str(uuid.uuid4())
+        cache_utils.set_config_value("local_uuid", local_uuid)
+    log_data["uuid"] = local_uuid
+    # 外网ip
+    log_data["ip"] = local_ip
+    # log_data 添加log_type
+    log_data["log_type"] = log_type
+    # 时间，精确到毫秒
+    log_data["time"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+    log_queue.put(log_data)
+
+
 if __name__ == '__main__':
     # Pyinstaller fix
     multiprocessing.freeze_support()
 
     init_logging_basic_config()
+
+    local_ip = get_external_ip()
+
+    # 启动线程
+    log_thread = threading.Thread(target=log_thread, daemon=True)
+    log_thread.start()
+
+    remote_log("start", {})
 
 
     def close_same_exe():
@@ -467,11 +540,14 @@ if __name__ == '__main__':
 
     tree.bind("<Double-1>", on_double_click)
 
+
     def on_enter(event):
         open_selected_excel()
 
+
     # 绑定回车事件
     tree.bind("<Return>", on_enter)
+
 
     def on_enter(event):
         global last_search_text
@@ -482,7 +558,9 @@ if __name__ == '__main__':
             search()
         return 'break'  # 阻止回车键的默认换行操作
 
+
     entry_search.bind('<Return>', on_enter)
+
 
     def on_up_key(event):
         on_up()
@@ -576,13 +654,14 @@ if __name__ == '__main__':
 
 
     def on_close():
-        global running
+        global running, log_run
         running = False
         # 停止后台线程
         cache_utils.stop_back_thread()
         # 关闭缓存文件
         cache_utils.close_cache()
 
+        log_run = False
         root.destroy()
         # root.after(100, root.destroy)
 
