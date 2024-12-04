@@ -1,20 +1,46 @@
 import tkinter as tk
+from tkinter import messagebox
+
+
+def open_child_window():
+    """打开子窗口的函数"""
+    child_window = tk.Toplevel(root)
+    child_window.title("子窗口")
+    # 设置子窗口尺寸为100*30
+    child_window.geometry("400x30")
+
+    # 禁用子窗口的最大化、最小化和关闭按钮
+    child_window.resizable(False, False)
+    child_window.protocol("WM_DELETE_WINDOW", lambda: None)
+    child_window.attributes('-toolwindow', True)
+
+    # 在子窗口中添加一个“最大化”按钮
+    maximize_button = tk.Button(child_window, text="最大化", command=lambda: maximize(root, child_window))
+    maximize_button.pack()
+
+
+def maximize(root, child_window):
+    # 显示主窗体
+    root.deiconify()
+
+    # 销毁子窗体
+    child_window.destroy()
+
+
+def on_minimize():
+    print("我就是不最小化")
+
+    open_child_window()
+    # 隐藏主窗口
+    root.withdraw()
+
 
 root = tk.Tk()
+root.title("主窗口")
+root.geometry("800x600")
 
-# 创建一个状态栏标签
-status_bar = tk.Label(root, text="状态栏信息", bd=1, relief=tk.SUNKEN, anchor=tk.W)
-status_bar.pack(side=tk.BOTTOM, fill=tk.X)
-
-# 更新状态栏信息的函数
-def update_status(message):
-    status_bar.config(text=message)
-
-# 模拟按钮点击更新状态栏
-def button_click():
-    update_status("按钮被点击了！")
-
-button = tk.Button(root, text="点击我", command=button_click)
-button.pack()
+# 创建打开子窗口的按钮
+open_button = tk.Button(root, text="最小化", command=open_child_window)
+open_button.pack()
 
 root.mainloop()

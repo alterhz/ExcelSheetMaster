@@ -34,6 +34,9 @@ log_queue = queue.Queue()
 log_run = True
 local_ip = ""
 
+# 小窗口
+mini_window = None
+
 root = tk.Tk()
 root.title(TITLE)
 
@@ -412,6 +415,57 @@ def remote_log(log_type, log_data):
     log_queue.put(log_data)
 
 
+def get_mini_window():
+    global mini_window
+    if mini_window is None:
+        """打开子窗口的函数"""
+        child_window = tk.Toplevel(root)
+        child_window.title("Mini搜索")
+        # 设置子窗口尺寸为100*30
+        child_window.geometry("350x50")
+
+        # 禁用子窗口的最大化、最小化和关闭按钮
+        child_window.resizable(False, False)
+        child_window.protocol("WM_DELETE_WINDOW", lambda: None)
+        child_window.attributes('-toolwindow', True)
+        # 设置窗口最上方
+        child_window.attributes('-topmost', True)
+
+        # 搜索文本框
+        min_search_entry = tk.Entry(child_window, width=30, font=FONT_12)
+        # 使用grid布局，将文本框放置在第0列，设置一定的内边距使其看起来更协调
+        min_search_entry.grid(row=0, column=0, padx=5, pady=5)
+
+        # 在子窗口中添加一个“搜索”按钮
+        mini_search_button = tk.Button(child_window, text="搜索", font=FONT_12,
+                                       command=lambda: mini_search(root, child_window, min_search_entry))
+        # 将按钮也放置在第0行，第1列，设置内边距与文本框统一
+        mini_search_button.grid(row=0, column=1, padx=5, pady=5)
+
+        def on_enter(event):
+            mini_search(root, child_window, min_search_entry)
+            return 'break'  # 阻止回车键的默认换行操作
+
+        min_search_entry.bind('<Return>', on_enter)
+
+        mini_window = child_window
+    return mini_window
+
+
+def mini_search(root, child_window, min_search_entry=None):
+    # 隐藏
+    child_window.withdraw()
+    # 获取文本框内容
+    search_text = min_search_entry.get()
+    print(f'搜索内容：{search_text}')
+    # 设置entry_search的内容
+    entry_search.delete(0, tk.END)
+    entry_search.insert(0, search_text)
+    search()
+    # 显示主窗体
+    root.deiconify()
+
+
 if __name__ == '__main__':
     # Pyinstaller fix
     multiprocessing.freeze_support()
@@ -491,17 +545,25 @@ if __name__ == '__main__':
     combo_box.grid(row=row_index, column=0)
 
     # 创建文本框
-    entry_search = tk.Entry(root, width=80, font=FONT_BOLD_12)
+    entry_search = tk.Entry(root, width=75, font=FONT_BOLD_12)
     entry_search.grid(row=row_index, column=1)
     entry_search.focus_set()  # 默认激活文本框
 
-    # 创建一个框架用于包裹按钮，模拟外边距
-    button_frame = tk.Frame(root)
-    button_frame.grid(row=row_index, column=2, padx=5, pady=3)
+    tree_frame = tk.Frame(root)
+    tree_frame.grid(row=row_index, column=2, padx=5, pady=3)
 
     # 创建按钮
-    button = tk.Button(button_frame, text="模糊搜索", command=search, font=FONT_BOLD_12, padx=0, pady=5, width=15)
-    button.pack()
+    button = tk.Button(tree_frame, text="模糊搜索", command=search, font=FONT_BOLD_12, padx=0, pady=5, width=10)
+    button.grid(row=row_index, column=2, padx=5, pady=3)
+
+
+    def mini():
+        root.withdraw()  # 隐藏主窗口
+        get_mini_window().deiconify()  # 显示子窗口
+
+
+    button = tk.Button(tree_frame, text="Mini窗口", command=mini, font=FONT_BOLD_12, padx=0, pady=5, width=10)
+    button.grid(row=row_index, column=3, padx=5, pady=3)
 
     row_index += 1
     # 创建一个框架用于包裹 Treeview
