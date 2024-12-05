@@ -431,8 +431,12 @@ def get_mini_window():
         # 设置窗口最上方
         child_window.attributes('-topmost', True)
 
+        search_text = entry_search.get()
         # 搜索文本框
         min_search_entry = tk.Entry(child_window, width=30, font=FONT_12)
+        # 先清空再插入
+        min_search_entry.delete(0, tk.END)
+        min_search_entry.insert(0, search_text)
         # 使用grid布局，将文本框放置在第0列，设置一定的内边距使其看起来更协调
         min_search_entry.grid(row=0, column=0, padx=5, pady=5)
 
