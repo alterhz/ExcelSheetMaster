@@ -566,7 +566,8 @@ if __name__ == '__main__':
         get_mini_window().deiconify()  # 显示子窗口
 
 
-    button = tk.Button(tree_frame, text="Mini窗口", command=mini, font=FONT_BOLD_12, padx=0, pady=5, width=10)
+    button = tk.Button(tree_frame, text="Mini窗口(M)", command=mini, font=FONT_BOLD_12, padx=0, pady=5, width=10,
+                       underline=7)
     button.grid(row=row_index, column=3, padx=5, pady=3)
 
     row_index += 1
@@ -626,30 +627,6 @@ if __name__ == '__main__':
 
 
     entry_search.bind('<Return>', on_enter)
-
-
-    def on_up_key(event):
-        on_up()
-
-
-    def on_down_key(event):
-        on_down()
-
-
-    entry_search.bind("<Up>", on_up_key)
-    entry_search.bind("<Down>", on_down_key)
-
-
-    def on_up_key(event):
-        on_up()
-
-
-    def on_down_key(event):
-        on_down()
-
-
-    tree.bind("<Up>", on_up_key)
-    tree.bind("<Down>", on_down_key)
 
     # 创建右键菜单
     right_click_menu = tk.Menu(root, tearoff=0)
@@ -751,6 +728,13 @@ if __name__ == '__main__':
             f"屏幕宽度：{screen_width}，屏幕高度：{screen_height}，窗口宽度：{window_width}，窗口高度：{window_height}")
         root.geometry('+%d+%d' % (x, y))
 
+
+    # 窗口绑定快捷键 ctrl+M 触发mini窗口按钮
+    root.bind('<Control-m>', lambda event: mini())
+
+    # 窗口绑定上下键
+    root.bind("<Up>", lambda event: on_up())
+    root.bind("<Down>", lambda event: on_down())
 
     center_window(root)
     root.mainloop()
